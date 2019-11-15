@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 
 import xyz.anythings.gw.entity.Deployment;
 import xyz.anythings.gw.entity.Gateway;
+import xyz.anythings.gw.service.api.IFirmwareDeployService;
 import xyz.anythings.sys.service.AbstractQueryService;
 import xyz.anythings.sys.util.AnyEntityUtil;
 import xyz.elidom.sys.util.ValueUtil;
@@ -15,7 +16,7 @@ import xyz.elidom.sys.util.ValueUtil;
  * @author shortstop
  */
 @Component
-public class Type1FirmwareDeployService extends AbstractQueryService {
+public class Type1FirmwareDeployService extends AbstractQueryService implements IFirmwareDeployService {
 
 	@Autowired
 	private Type1IndicatorRequestService indSendService;

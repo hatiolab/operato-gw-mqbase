@@ -13,17 +13,17 @@ import org.springframework.stereotype.Component;
 import xyz.anythings.gw.GwConstants;
 import xyz.anythings.gw.service.api.IIndicatorRequestService;
 import xyz.anythings.gw.service.model.IndOffReq;
-import xyz.anythings.gw.service.mw.MwSender;
-import xyz.anythings.gw.service.mw.model.GatewayDepRequest;
-import xyz.anythings.gw.service.mw.model.GatewayInitResponse;
-import xyz.anythings.gw.service.mw.model.IndicatorDepRequest;
-import xyz.anythings.gw.service.mw.model.IndicatorOffRequest;
-import xyz.anythings.gw.service.mw.model.IndicatorOnInformation;
-import xyz.anythings.gw.service.mw.model.IndicatorOnRequest;
-import xyz.anythings.gw.service.mw.model.LedOffRequest;
-import xyz.anythings.gw.service.mw.model.LedOnRequest;
-import xyz.anythings.gw.service.mw.model.MiddlewareConnInfoModRequest;
-import xyz.anythings.gw.service.mw.model.TimesyncResponse;
+import xyz.anythings.gw.service.mq.MqSender;
+import xyz.anythings.gw.service.mq.model.GatewayDepRequest;
+import xyz.anythings.gw.service.mq.model.GatewayInitResponse;
+import xyz.anythings.gw.service.mq.model.IndicatorDepRequest;
+import xyz.anythings.gw.service.mq.model.IndicatorOffRequest;
+import xyz.anythings.gw.service.mq.model.IndicatorOnInformation;
+import xyz.anythings.gw.service.mq.model.IndicatorOnRequest;
+import xyz.anythings.gw.service.mq.model.LedOffRequest;
+import xyz.anythings.gw.service.mq.model.LedOnRequest;
+import xyz.anythings.gw.service.mq.model.MiddlewareConnInfoModRequest;
+import xyz.anythings.gw.service.mq.model.TimesyncResponse;
 import xyz.anythings.gw.service.util.BatchIndConfigUtil;
 import xyz.anythings.gw.service.util.MwMessageUtil;
 import xyz.anythings.sys.service.AbstractQueryService;
@@ -44,7 +44,7 @@ public class Type1IndicatorRequestService extends AbstractQueryService implement
 	 * 미들웨어로 메시지를 전송하기 위한 유틸리티
 	 */
 	@Autowired
-	private MwSender mwMsgSender;
+	private MqSender mwMsgSender;
 		
 	/**********************************************************************
 	 * 							1. 표시기 On 요청
