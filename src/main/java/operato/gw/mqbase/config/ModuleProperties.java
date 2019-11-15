@@ -14,9 +14,9 @@ import xyz.elidom.util.FormatUtil;
  * 
  * @author shortstop
  */
-@Component("operatoGwMqbaseProp")
+@Component("operatoGwMqbaseModuleProperties")
 @EnableConfigurationProperties
-@PropertySource("classpath:/properties/operato-mq-based-gw.properties")
+@PropertySource("classpath:/properties/operato-gw-mqbase.properties")
 public class ModuleProperties implements IModuleProperties {
 
 	/**
