@@ -17,7 +17,7 @@ apply from : 'anythings.gradle'
 
 jar {	
 	manifest {
-		attributes 'Implementation-Title': 'operato-mq-based-gw',
+		attributes 'Implementation-Title': 'operato-gw-mqbase',
 				   'Implementation-Version': version
 	}
 }
