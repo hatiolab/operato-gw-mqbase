@@ -1,0 +1,36 @@
+buildscript {
+	ext {
+		baseUrl = "http://repo.hatiolab.com/nexus/content";
+		springBootVersion = '1.4.4.RELEASE'
+	}
+	repositories {
+		maven {
+			url baseUrl + '/groups/elidom-repository/'
+		}
+	}
+	dependencies {
+		classpath("org.springframework.build.gradle:propdeps-plugin:0.0.7")		 
+	}
+}
+
+apply from : 'anythings.gradle'
+
+jar {	
+	manifest {
+		attributes 'Implementation-Title': 'operato-mq-based-gw',
+				   'Implementation-Version': version
+	}
+}
+
+repositories {
+	maven {
+		url baseUrl + '/groups/elidom-repository/'
+	}
+}
+
+dependencies {
+	compile project(':anythings-sys')
+	compile project(':anythings-comm-rabbitmq')
+	compile project(':anythings-gw')
+	compile project(':anythings-logis-base')
+}
