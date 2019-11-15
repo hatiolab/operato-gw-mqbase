@@ -1,2 +1,2 @@
-# operato-mq-based-gw
+# operato-gw-mqbase
 Operato Message Queue Based Gateway
