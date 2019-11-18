@@ -10,23 +10,27 @@ import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import xyz.anythings.base.LogisConstants;
 import xyz.anythings.gw.GwConstants;
-import xyz.anythings.gw.service.api.IIndicatorRequestService;
+import xyz.anythings.gw.entity.Deployment;
+import xyz.anythings.gw.entity.Gateway;
+import xyz.anythings.gw.service.api.IIndRequestService;
+import xyz.anythings.gw.service.model.IGwIndInit;
+import xyz.anythings.gw.service.model.IIndOnInfo;
 import xyz.anythings.gw.service.model.IndOffReq;
 import xyz.anythings.gw.service.mq.MqSender;
 import xyz.anythings.gw.service.mq.model.GatewayDepRequest;
-import xyz.anythings.gw.service.mq.model.GatewayInitResponse;
+import xyz.anythings.gw.service.mq.model.GatewayInitResIndList;
 import xyz.anythings.gw.service.mq.model.IndicatorDepRequest;
 import xyz.anythings.gw.service.mq.model.IndicatorOffRequest;
 import xyz.anythings.gw.service.mq.model.IndicatorOnInformation;
 import xyz.anythings.gw.service.mq.model.IndicatorOnRequest;
 import xyz.anythings.gw.service.mq.model.LedOffRequest;
 import xyz.anythings.gw.service.mq.model.LedOnRequest;
-import xyz.anythings.gw.service.mq.model.MiddlewareConnInfoModRequest;
-import xyz.anythings.gw.service.mq.model.TimesyncResponse;
 import xyz.anythings.gw.service.util.BatchIndConfigUtil;
 import xyz.anythings.gw.service.util.MwMessageUtil;
 import xyz.anythings.sys.service.AbstractQueryService;
+import xyz.anythings.sys.util.AnyEntityUtil;
 import xyz.elidom.rabbitmq.message.MessageProperties;
 import xyz.elidom.sys.util.ValueUtil;
 
@@ -38,17 +42,63 @@ import xyz.elidom.sys.util.ValueUtil;
  * @author shortstop
  */
 @Component
-public class MqbaseIndicatorRequestService extends AbstractQueryService implements IIndicatorRequestService {
+public class MqbaseIndRequestService extends AbstractQueryService implements IIndRequestService {
 
 	/**
 	 * 미들웨어로 메시지를 전송하기 위한 유틸리티
 	 */
 	@Autowired
 	private MqSender mwMsgSender;
+	
+	@Override
+	public IIndOnInfo newIndicatorInfomration() {
+		return new IndicatorOnInformation();
+	}
+	
+	@Override
+	public IGwIndInit newGwIndicatorInit() {
+		return new GatewayInitResIndList();
+	}
+	
+	/**
+	 * 표시기 정보 타입 변경
+	 * 
+	 * @param indOnList
+	 * @return
+	 */
+	public List<IndicatorOnInformation> convertIndOnList(List<IIndOnInfo> indOnList) {
+		List<IndicatorOnInformation> indList = new ArrayList<IndicatorOnInformation>();
+		
+		if(ValueUtil.isNotEmpty(indOnList)) {
+			for(IIndOnInfo info : indOnList) {
+				indList.add((IndicatorOnInformation)info);
+			}
+		}
+		
+		return indList;
+	}
 		
 	/**********************************************************************
 	 * 							1. 표시기 On 요청
 	 **********************************************************************/	
+	
+	/**
+	 * 여러 표시기에 한꺼번에 분류 처리를 위한 점등 요청
+	 * 
+	 * @param domainId
+	 * @param jobType
+	 * @param actionType
+	 * @param indOnList - key : gwPath, value : indOnInfo 
+	 */
+	@Override
+	public void requestIndListOn(Long domainId, String jobType, String actionType, Map<String, List<IIndOnInfo>> indOnList) {
+		if (ValueUtil.isNotEmpty(indOnList)) {
+			indOnList.forEach((gwPath, indsOn) -> {
+				MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
+				this.mwMsgSender.send(domainId, property, new IndicatorOnRequest(jobType, actionType, this.convertIndOnList(indsOn)));
+			});
+		}
+	}
 	
 	/**
 	 * 여러 표시기 한꺼번에 재고 실사용 점등 요청
@@ -57,11 +107,11 @@ public class MqbaseIndicatorRequestService extends AbstractQueryService implemen
 	 * @param stockIndOnList
 	 */
 	@Override
-	public void requestStockIndOn(Long domainId, Map<String, List<IndicatorOnInformation>> stockIndOnList) {
+	public void requestIndListOnForStocktake(Long domainId, Map<String, List<IIndOnInfo>> stockIndOnList) {
 		if (ValueUtil.isNotEmpty(stockIndOnList)) {
 			stockIndOnList.forEach((gwPath, stockOnList) -> {
 				MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
-				this.mwMsgSender.send(domainId, property, new IndicatorOnRequest("DPS", GwConstants.IND_ACTION_TYPE_STOCK, stockOnList));
+				this.mwMsgSender.send(domainId, property, new IndicatorOnRequest(LogisConstants.JOB_TYPE_DPS, GwConstants.IND_ACTION_TYPE_STOCK, this.convertIndOnList(stockOnList)));
 			});
 		}
 	}
@@ -71,35 +121,18 @@ public class MqbaseIndicatorRequestService extends AbstractQueryService implemen
 	 * 
 	 * @param domainId
 	 * @param jobType
-	 * @param actionType
-	 * @param indOnForPickList - key : gwPath, value : indOnInfo 
+	 * @param indOnForInspectList - key : gwPath, value : indOnInfo 
 	 */
 	@Override
-	public void requestIndsOn(Long domainId, String jobType, String actionType, Map<String, List<IndicatorOnInformation>> indOnForPickList) {
-		if (ValueUtil.isNotEmpty(indOnForPickList)) {
-			indOnForPickList.forEach((gwPath, indOnList) -> {
+	public void requestIndListOnForInspect(Long domainId, String jobType, Map<String, List<IIndOnInfo>> indOnForInspectList) {
+		if (ValueUtil.isNotEmpty(indOnForInspectList)) {
+			indOnForInspectList.forEach((gwPath, indOnList) -> {
 				MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
-				this.mwMsgSender.send(domainId, property, new IndicatorOnRequest(jobType, actionType, indOnList));
-			});
-		}
-	}
-	
-	/**
-	 * 여러 표시기에 한꺼번에 분류 처리를 위한 점등 요청
-	 * 
-	 * @param domainId
-	 * @param jobType
-	 * @param indOnForPickList - key : gwPath, value : indOnInfo 
-	 */
-	@Override
-	public void requestIndsInspectOn(Long domainId, String jobType, Map<String, List<IndicatorOnInformation>> indOnForPickList) {
-		if (ValueUtil.isNotEmpty(indOnForPickList)) {
-			indOnForPickList.forEach((gwPath, indOnList) -> {
-				MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
-				for(IndicatorOnInformation indOnInfo : indOnList) {
+				for(IIndOnInfo indOnInfo : indOnList) {
 					indOnInfo.setBtnMode(BatchIndConfigUtil.IND_BUTTON_MODE_STOP);
 				}
-				this.mwMsgSender.send(domainId, property, new IndicatorOnRequest(jobType, GwConstants.IND_ACTION_TYPE_INSPECT, indOnList));
+				
+				this.mwMsgSender.send(domainId, property, new IndicatorOnRequest(jobType, GwConstants.IND_ACTION_TYPE_INSPECT, this.convertIndOnList(indOnList)));
 			});
 		}
 	}
@@ -117,8 +150,8 @@ public class MqbaseIndicatorRequestService extends AbstractQueryService implemen
 	 * @param eaQty
 	 */
 	@Override
-	public void requestPickIndOn(Long domainId, String jobType, String gwPath, String indCd, String bizId, String color, Integer boxQty, Integer eaQty) {
-		this.requestCommonIndOn(domainId, jobType, gwPath, indCd, bizId, GwConstants.IND_ACTION_TYPE_PICK, color, boxQty, eaQty);
+	public void requestIndOnForPick(Long domainId, String jobType, String gwPath, String indCd, String bizId, String color, Integer boxQty, Integer eaQty) {
+		this.requestIndOn(domainId, jobType, gwPath, indCd, bizId, GwConstants.IND_ACTION_TYPE_PICK, color, boxQty, eaQty);
 	}
 	
 	/**
@@ -134,8 +167,8 @@ public class MqbaseIndicatorRequestService extends AbstractQueryService implemen
 	 * @param eaQty
 	 */
 	@Override
-	public void requestInspectIndOn(Long domainId, String jobType, String gwPath, String indCd, String bizId, String color, Integer boxQty, Integer eaQty) {
-		this.requestCommonIndOn(domainId, jobType, gwPath, indCd, bizId, GwConstants.IND_ACTION_TYPE_INSPECT, color, boxQty, eaQty);
+	public void requestIndOnForInspect(Long domainId, String jobType, String gwPath, String indCd, String bizId, String color, Integer boxQty, Integer eaQty) {
+		this.requestIndOn(domainId, jobType, gwPath, indCd, bizId, GwConstants.IND_ACTION_TYPE_INSPECT, color, boxQty, eaQty);
 	}
 	
 	/**
@@ -169,7 +202,7 @@ public class MqbaseIndicatorRequestService extends AbstractQueryService implemen
 	 * @param eaQty
 	 */
 	@Override
-	public void requestCommonIndOn(Long domainId, String jobType, String gwPath, String indCd, String bizId, String actionType, String color, Integer boxQty, Integer eaQty) {
+	public void requestIndOn(Long domainId, String jobType, String gwPath, String indCd, String bizId, String actionType, String color, Integer boxQty, Integer eaQty) {
 		MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
 		List<IndicatorOnInformation> indOnList = new ArrayList<IndicatorOnInformation>(1);
 		IndicatorOnInformation indOnInfo = new IndicatorOnInformation();
@@ -206,6 +239,7 @@ public class MqbaseIndicatorRequestService extends AbstractQueryService implemen
 	 * 표시기 하나에 대한 소등 요청 
 	 * 
 	 * @param domainId
+	 * @param gwPath
 	 * @param indCd
 	 */
 	@Override
@@ -499,7 +533,7 @@ public class MqbaseIndicatorRequestService extends AbstractQueryService implemen
 	 */
 	@Override
 	public void requestFullbox(Long domainId, String jobType, String gwPath, String indCd, String bizId, String color) {
-		this.requestCommonIndOn(domainId, jobType, gwPath, indCd, bizId, GwConstants.IND_BIZ_FLAG_FULL, color, 0, 0);
+		this.requestIndOn(domainId, jobType, gwPath, indCd, bizId, GwConstants.IND_BIZ_FLAG_FULL, color, 0, 0);
 	}
 
 	/**
@@ -600,101 +634,9 @@ public class MqbaseIndicatorRequestService extends AbstractQueryService implemen
 		
 		this.requestShowString(domainId, jobType, gwPath, indCd, bizId, showStr.toString());
 	}
-
-	/**********************************************************************
-	 * 							4. 게이트웨이 초기화 요청
-	 **********************************************************************/	
-	
-	/**
-	 * 게이트웨이 초기화 응답 전송.
-	 * 
-	 * @param domainId
-	 * @param msgDestId
-	 * @param gatewayInitRes
-	 */
-	@Override
-	public void respondGatewayInit(Long domainId, String msgDestId, GatewayInitResponse gatewayInitRes) {
-		this.mwMsgSender.sendRequest(domainId, msgDestId, gatewayInitRes);
-	}
 	
 	/**********************************************************************
-	 * 							5. 미들웨어 정보 변경 요청
-	 **********************************************************************/	
-
-	/**
-	 * 게이트웨이에 미들웨어 접속 정보 변경 요청
-	 * 
-	 * @param domainId
-	 * @param msgDestId
-	 * @param mwConnModifyReq
-	 */
-	@Override
-	public void requestMwConnectionModify(Long domainId, String msgDestId, MiddlewareConnInfoModRequest mwConnModifyReq) {
-		this.mwMsgSender.sendRequest(domainId, msgDestId, mwConnModifyReq);
-	}
-	
-	/**********************************************************************
-	 * 							6. 게이트웨이 시스템 시간 동기화 
-	 **********************************************************************/	
-
-	/**
-	 * 게이트웨이와 시스템간의 시간 동기화 응답 요청.
-	 * 
-	 * @param domainId
-	 * @param msgDestId
-	 * @param serverTime
-	 */
-	@Override
-	public void respondTimesync(Long domainId, String msgDestId, long serverTime) {
-		this.mwMsgSender.sendRequest(domainId, msgDestId, new TimesyncResponse(serverTime));
-	}
-	
-	/**********************************************************************
-	 * 							7. 게이트웨이 / 표시기 펌웨어 배포  
-	 **********************************************************************/	
-	
-	/**
-	 * 게이트웨이에 게이트웨이 펌웨어 배포 정보 전송 
-	 * 
-	 * @parma domainId
-	 * @param gwChannel 게이트웨이 구분 채널 
-	 * @param gwVersion 게이트웨이 펌웨어 버전 
-	 * @param gwFwDownloadUrl 게이트웨이 펌웨어 다운로드 URL
-	 * @param filename 파일명
-	 * @param forceFlag 강제 업데이트 여부
-	 */
-	@Override
-	public void deployGatewayFirmware(Long domainId, String gwChannel, String gwVersion, String gwFwDownloadUrl, String filename, Boolean forceFlag) {
-		GatewayDepRequest gwDeploy = new GatewayDepRequest();
-		gwDeploy.setGwUrl(gwFwDownloadUrl);
-		gwDeploy.setVersion(gwVersion);
-		gwDeploy.setFilename(filename);
-		gwDeploy.setForceFlag(forceFlag);
-		this.mwMsgSender.sendRequest(domainId, gwChannel, gwDeploy);
-	}
-	
-	/**
-	 * 게이트웨이에 표시기 펌웨어 배포 정보 전송 
-	 * 
-	 * @param domainId
-	 * @param gwChannel 게이트웨이 구분 채널
-	 * @param indVersion 표시기 펌웨어 버전 
-	 * @param indFwDownloadUrl 표시기 펌웨어 다운로드 URL
-	 * @param filename 파일명
-	 * @param forceFlag 강제 업데이트 여부
-	 */
-	@Override
-	public void deployIndFirmware(Long domainId, String gwChannel, String indVersion, String indFwDownloadUrl, String filename, Boolean forceFlag) {
-		IndicatorDepRequest indDeploy = new IndicatorDepRequest();
-		indDeploy.setVersion(indVersion);
-		indDeploy.setIndUrl(indFwDownloadUrl);
-		indDeploy.setFilename(filename);
-		indDeploy.setForceFlag(forceFlag);
-		this.mwMsgSender.sendRequest(domainId, gwChannel, indDeploy);
-	}
-	
-	/**********************************************************************
-	 * 							8. LED 바 점등 / 소등 
+	 * 							4. LED 바 점등 / 소등 
 	 **********************************************************************/	
 	
 	/**
@@ -811,4 +753,112 @@ public class MqbaseIndicatorRequestService extends AbstractQueryService implemen
 		}
 	}
 
+	/**********************************************************************
+	 * 							4. 게이트웨이 / 표시기 펌웨어 배포  
+	 **********************************************************************/	
+	
+	@Override
+	public void deployFirmware(Deployment deployment) {
+		Long domainId = deployment.getDomainId();
+		String gwCd = deployment.getTargetId();
+		
+		// 1. 게이트웨이 조회 
+		Gateway gw = AnyEntityUtil.findEntityByCode(domainId, true, Gateway.class, "gwCd", gwCd);
+		
+		// 2. 게이트웨이 펌웨어 배포
+		if(ValueUtil.isEqualIgnoreCase(deployment.getTargetType(), Deployment.TARGET_TYPE_GW)) {
+			this.deployGwFirmware(domainId, gw.getGwNm(), deployment.getVersion(), deployment.computeDownloadUrl(), deployment.getFileName(), deployment.getForceFlag());
+		// 3. 게이트웨이 펌웨어 배포			
+		} else {
+			this.deployIndFirmware(domainId, gw.getGwNm(), deployment.getVersion(), deployment.computeDownloadUrl(), deployment.getFileName(), deployment.getForceFlag());
+		}
+	}
+	
+	/**
+	 * 게이트웨이에 게이트웨이 펌웨어 배포 정보 전송 
+	 * 
+	 * @parma domainId
+	 * @param gwChannel 게이트웨이 구분 채널 
+	 * @param gwVersion 게이트웨이 펌웨어 버전 
+	 * @param gwFwDownloadUrl 게이트웨이 펌웨어 다운로드 URL
+	 * @param filename 파일명
+	 * @param forceFlag 강제 업데이트 여부
+	 */
+	@Override
+	public void deployGwFirmware(Long domainId, String gwChannel, String gwVersion, String gwFwDownloadUrl, String filename, Boolean forceFlag) {
+		GatewayDepRequest gwDeploy = new GatewayDepRequest();
+		gwDeploy.setGwUrl(gwFwDownloadUrl);
+		gwDeploy.setVersion(gwVersion);
+		gwDeploy.setFilename(filename);
+		gwDeploy.setForceFlag(forceFlag);
+		this.mwMsgSender.sendRequest(domainId, gwChannel, gwDeploy);
+	}
+	
+	/**
+	 * 게이트웨이에 표시기 펌웨어 배포 정보 전송 
+	 * 
+	 * @param domainId
+	 * @param gwChannel 게이트웨이 구분 채널
+	 * @param indVersion 표시기 펌웨어 버전 
+	 * @param indFwDownloadUrl 표시기 펌웨어 다운로드 URL
+	 * @param filename 파일명
+	 * @param forceFlag 강제 업데이트 여부
+	 */
+	@Override
+	public void deployIndFirmware(Long domainId, String gwChannel, String indVersion, String indFwDownloadUrl, String filename, Boolean forceFlag) {
+		IndicatorDepRequest indDeploy = new IndicatorDepRequest();
+		indDeploy.setVersion(indVersion);
+		indDeploy.setIndUrl(indFwDownloadUrl);
+		indDeploy.setFilename(filename);
+		indDeploy.setForceFlag(forceFlag);
+		this.mwMsgSender.sendRequest(domainId, gwChannel, indDeploy);
+	}
+
+	/**********************************************************************
+	 * 							5. 게이트웨이 초기화 요청
+	 **********************************************************************/	
+	
+	/**
+	 * 게이트웨이 초기화 응답 전송.
+	 * 
+	 * @param domainId
+	 * @param msgDestId
+	 * @param gatewayInitRes
+	 */
+	/*@Override
+	public void respondGatewayInit(Long domainId, String msgDestId, GatewayInitResponse gatewayInitRes) {
+		this.mwMsgSender.sendRequest(domainId, msgDestId, gatewayInitRes);
+	}*/
+	
+	/**********************************************************************
+	 * 							5. 미들웨어 정보 변경 요청
+	 **********************************************************************/	
+
+	/**
+	 * 게이트웨이에 미들웨어 접속 정보 변경 요청
+	 * 
+	 * @param domainId
+	 * @param msgDestId
+	 * @param mwConnModifyReq
+	 */
+	/*@Override
+	public void requestMwConnectionModify(Long domainId, String msgDestId, MiddlewareConnInfoModRequest mwConnModifyReq) {
+		this.mwMsgSender.sendRequest(domainId, msgDestId, mwConnModifyReq);
+	}*/
+	
+	/**********************************************************************
+	 * 							5. 게이트웨이 시스템 시간 동기화 
+	 **********************************************************************/	
+
+	/**
+	 * 게이트웨이와 시스템간의 시간 동기화 응답 요청.
+	 * 
+	 * @param domainId
+	 * @param msgDestId
+	 * @param serverTime
+	 */
+	/*@Override
+	public void respondTimesync(Long domainId, String msgDestId, long serverTime) {
+		this.mwMsgSender.sendRequest(domainId, msgDestId, new TimesyncResponse(serverTime));
+	}*/
 }
