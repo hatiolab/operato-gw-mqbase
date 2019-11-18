@@ -16,10 +16,10 @@ import xyz.elidom.sys.util.ValueUtil;
  * @author shortstop
  */
 @Component
-public class Type1FirmwareDeployService extends AbstractQueryService implements IFirmwareDeployService {
+public class MqbaseFirmwareDeployService extends AbstractQueryService implements IFirmwareDeployService {
 
 	@Autowired
-	private Type1IndicatorRequestService indSendService;
+	private MqbaseIndicatorRequestService indSendService;
 	
 	/**
 	 * 펌웨어 배포

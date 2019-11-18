@@ -38,7 +38,7 @@ import xyz.elidom.sys.util.ValueUtil;
  * @author shortstop
  */
 @Component
-public class Type1IndicatorRequestService extends AbstractQueryService implements IIndicatorRequestService {
+public class MqbaseIndicatorRequestService extends AbstractQueryService implements IIndicatorRequestService {
 
 	/**
 	 * 미들웨어로 메시지를 전송하기 위한 유틸리티
