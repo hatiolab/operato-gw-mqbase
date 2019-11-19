@@ -9,6 +9,9 @@ import org.springframework.stereotype.Component;
 
 import operato.gw.mqbase.MqbaseConfigConstants;
 import xyz.anythings.base.LogisConstants;
+import xyz.anythings.base.entity.JobBatch;
+import xyz.anythings.base.query.store.IndicatorQueryStore;
+import xyz.anythings.base.query.util.IndicatorQueryUtil;
 import xyz.anythings.gw.GwConstants;
 import xyz.anythings.gw.entity.Gateway;
 import xyz.anythings.gw.entity.Indicator;
@@ -27,18 +30,20 @@ import xyz.anythings.gw.service.mq.model.TimesyncResponse;
 import xyz.anythings.gw.service.util.BatchIndConfigUtil;
 import xyz.anythings.gw.service.util.StageIndConfigUtil;
 import xyz.anythings.sys.service.AbstractExecutionService;
+import xyz.anythings.sys.util.AnyEntityUtil;
 import xyz.elidom.orm.OrmConstants;
 import xyz.elidom.sys.SysConstants;
 import xyz.elidom.sys.entity.Domain;
 import xyz.elidom.sys.util.SettingUtil;
 import xyz.elidom.sys.util.ValueUtil;
+import xyz.elidom.util.BeanUtil;
 
 /**
- * Gateway, Indicator Boot 프로세스
+ * 게이트웨이로 받은 메시지를 처리하는 서비스 인터페이스
  * 
  * @author shortstop
  */
-@Component("mqbaseGwBootService")
+@Component("mqbaseIndHandlerService")
 public class MqbaseIndHandlerService extends AbstractExecutionService implements IIndHandlerService {
 	/**
 	 * 미들웨어로 메시지를 전송하기 위한 유틸리티
@@ -47,12 +52,34 @@ public class MqbaseIndHandlerService extends AbstractExecutionService implements
 	private MqSender mqSender;	
 
 	@Override
-	public boolean handleGatewayBootReq(Gateway gateway, List<IGwIndInit> indList) {
-		return this.handleGatewayBootReq(gateway, null, indList);
+	public boolean handleGatewayBootReq(Gateway gateway) {
+		// 1. 게이트웨이에 걸쳐진 호기에 걸린 작업 배치를 찾는다.
+		List<JobBatch> batchList = IndicatorQueryUtil.searchRunningBatchesByGwCd(gateway);
+		JobBatch batch = ValueUtil.isEmpty(batchList) ? null : batchList.get(0);
+		
+		Long domainId = gateway.getDomainId();
+		String jobType = (batch == null) ? LogisConstants.JOB_TYPE_DAS : batch.getJobType();
+		String stageCd = gateway.getStageCd();
+		String gwPath = gateway.getGwNm();
+		String viewType = StageIndConfigUtil.getIndViewType(domainId, stageCd);
+		
+		// 2. 게이트웨이 초기화를 위한 게이트웨이 소속의 표시기 리스트를 조회한다.
+		String sql = BeanUtil.get(IndicatorQueryStore.class).getSearchIndListForGwInitQuery();
+		List<GatewayInitResIndList> gwInitIndList = AnyEntityUtil.searchItems(domainId, false, GatewayInitResIndList.class, sql, "domainId,gwNm,jobType,viewType,activeFlag", domainId, gwPath, jobType, viewType, true);
+		
+		// 3. 게이트웨이 부팅 요청 처리
+		return this.handleGatewayBootReq(gateway, (batch == null) ? null : batch.getId(), gwInitIndList);
 	}
 	
-	@Override
-	public boolean handleGatewayBootReq(Gateway gateway, String batchId, List<IGwIndInit> indList) {
+	/**
+	 * 게이트웨이 부팅 요청 처리
+	 * 
+	 * @param gateway
+	 * @param batchId
+	 * @param indList
+	 * @return
+	 */
+	public boolean handleGatewayBootReq(Gateway gateway, String batchId, List<GatewayInitResIndList> indList) {
 		// 1. 게이트웨이 부트 전 처리
 		GatewayBootEvent gwBootBefore = new GatewayBootEvent(GatewayInitEvent.EVENT_STEP_BEFORE, gateway);
 		this.eventPublisher.publishEvent(gwBootBefore);

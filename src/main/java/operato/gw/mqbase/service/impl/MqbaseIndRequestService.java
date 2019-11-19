@@ -42,7 +42,7 @@ import xyz.elidom.sys.util.ValueUtil;
  * 
  * @author shortstop
  */
-@Component
+@Component("mqbaseIndRequestService")
 public class MqbaseIndRequestService extends AbstractQueryService implements IIndRequestService {
 
 	/**

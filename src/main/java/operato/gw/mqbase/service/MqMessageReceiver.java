@@ -4,14 +4,33 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import operato.gw.mqbase.service.impl.MqbaseIndHandlerService;
 import xyz.anythings.comm.rabbitmq.event.MwErrorEvent;
+import xyz.anythings.gw.entity.Gateway;
+import xyz.anythings.gw.entity.Indicator;
 import xyz.anythings.gw.service.mq.MqCommon;
+import xyz.anythings.gw.service.mq.MqSender;
+import xyz.anythings.gw.service.mq.model.Action;
+import xyz.anythings.gw.service.mq.model.ErrorReportAck;
+import xyz.anythings.gw.service.mq.model.GatewayInitReport;
+import xyz.anythings.gw.service.mq.model.GatewayInitReportAck;
+import xyz.anythings.gw.service.mq.model.GatewayInitRequest;
+import xyz.anythings.gw.service.mq.model.GatewayInitRequestAck;
+import xyz.anythings.gw.service.mq.model.IndicatorInitReport;
+import xyz.anythings.gw.service.mq.model.IndicatorInitReportAck;
+import xyz.anythings.gw.service.mq.model.IndicatorOffResponseAck;
+import xyz.anythings.gw.service.mq.model.IndicatorOnResponseAck;
+import xyz.anythings.gw.service.mq.model.IndicatorStatusReportAck;
 import xyz.anythings.gw.service.mq.model.MessageObject;
+import xyz.anythings.gw.service.mq.model.MiddlewareConnInfoModResponseAck;
+import xyz.anythings.gw.service.mq.model.TimesyncRequestAck;
 import xyz.anythings.gw.service.util.MwMessageUtil;
 import xyz.anythings.sys.event.EventPublisher;
+import xyz.anythings.sys.util.AnyEntityUtil;
 import xyz.elidom.exception.server.ElidomRuntimeException;
 import xyz.elidom.rabbitmq.client.event.SystemMessageReceiveEvent;
 import xyz.elidom.sys.entity.Domain;
@@ -39,7 +58,18 @@ import xyz.elidom.sys.util.ValueUtil;
  * @author shortstop
  */
 @Component
-public class MqMessageReceiver extends MqCommon  {
+public class MqMessageReceiver extends MqCommon {
+	
+	/**
+	 * 미들웨어 전송 서비스
+	 */
+	@Autowired
+	private MqbaseIndHandlerService indHandlerService;
+	/**
+	 * 미들웨어 전송 서비스
+	 */
+	@Autowired
+	private MqSender mwSender;
 	/**
 	 * Event Publisher
 	 */
@@ -63,7 +93,7 @@ public class MqMessageReceiver extends MqCommon  {
 	}
 
 	@Transactional
-	//@EventListener(condition = "#event.queueName == @anythingsGwModuleProperties.getRabbitQueue()")
+	@EventListener(condition = "#event.equipType == 'GW' and #event.equipVendor == 'mqbase'")
 	public void messageReceiveEvent(SystemMessageReceiveEvent event) {
 		// 1. 이벤트를 MessageObject로 파싱
 		MessageObject msgObj = MwMessageUtil.toMessageObject(event);
@@ -92,10 +122,10 @@ public class MqMessageReceiver extends MqCommon  {
 		try {
 			// 5. MPS에서 요청한 메시지에 대한 응답 (즉 ACK)에 대한 처리.
 			if (ValueUtil.toBoolean(msgObj.getProperties().getIsReply())) {
-				this.handleReplyMessage(siteDomain, msgObj);
+				this.handleReplyMessage(siteDomain, event.getStageCd(), msgObj);
 			// 6. 타 시스템 혹은 장비에서 MPS에 요청 메시지에 대한 처리.
 			} else {
-				this.handleReceivedMessage(siteDomain, msgObj);
+				this.handleReceivedMessage(siteDomain, event.getStageCd(), msgObj);
 			}
 		} catch (Exception e) {
 			// 7. 예외 처리
@@ -109,12 +139,13 @@ public class MqMessageReceiver extends MqCommon  {
 	}
 
 	/**
-	 * MPS에서 요청한 메시지에 대한 응답에 대한 처리.
+	 * 설비에서 요청한 메시지에 대한 응답에 대한 처리.
 	 * 
 	 * @param siteDomain
+	 * @param stageCd
 	 * @param msgObj
 	 */
-	private void handleReplyMessage(Domain siteDomain, MessageObject msgObj) {
+	private void handleReplyMessage(Domain siteDomain, String stageCd, MessageObject msgObj) {
 		// this.logInfoMessage(siteDomain.getId(), msgObj);		
 	}
 
@@ -122,11 +153,85 @@ public class MqMessageReceiver extends MqCommon  {
 	 * 표시기 측에서의 처리 이벤트를 실행한다.
 	 * 
 	 * @param siteDomain
+	 * @param stageCd
 	 * @param msgObj
 	 */
-	private void handleReceivedMessage(Domain siteDomain, MessageObject msgObj) {
+	private void handleReceivedMessage(Domain siteDomain, String stageCd, MessageObject msgObj) {
 		// 메시지 로깅
 		this.logInfoMessage(siteDomain.getId(), msgObj);
+		
+		String msgId = msgObj.getProperties().getId();
+		String sourceId = msgObj.getProperties().getSourceId();
+		String action = msgObj.getBody().getAction();
+		
+		switch (action) {
+			// 1. 버튼 터치 - 표시기 버튼 터치로 인한 작업 처리 메시지 처리 (OK, Full Box, 수정)
+			case Action.Values.IndicatorOnResponse :
+				this.mwSender.sendResponse(siteDomain.getId(), msgId, sourceId, new IndicatorOnResponseAck());
+				//this.handleMpiResponse(siteDomain, msgObj);
+				break;
+
+			// 2. Gateway별 표시기 소등 처리
+			case Action.Values.IndicatorOffResponse :
+				this.mwSender.sendResponse(siteDomain.getId(), msgId, sourceId, new IndicatorOffResponseAck());
+				//this.handleMpiOffResponse(siteDomain, msgObj);
+				break;
+
+			// 3. 게이트웨이 초기화 요청에 대한 응답 처리.
+			case Action.Values.GatewayInitRequest :
+				// 요청에 대한 응답 메시지 전송.
+				this.mwSender.sendResponse(siteDomain.getId(), msgId, sourceId, new GatewayInitRequestAck());
+				// 게이트웨이 초기화 요청에 대한 응답 처리.
+				this.respondGatewayInit(siteDomain, stageCd, msgObj);
+				break;
+
+			// 4. 게이트웨이 초기화 리포트 메시지 처리
+			case Action.Values.GatewayInitReport :
+				this.mwSender.sendResponse(siteDomain.getId(), msgId, sourceId, new GatewayInitReportAck());
+				this.handleGwInitReport(siteDomain, stageCd, msgObj);
+				break;
+
+			// 5. 표시기 초기화 리포트 메시지 처리
+			case Action.Values.IndicatorInitReport :
+				this.mwSender.sendResponse(siteDomain.getId(), msgId, sourceId, new IndicatorInitReportAck());
+				this.handleIndInitReport(siteDomain, stageCd, msgObj);
+				break;
+
+			// 6. 표시기 상태 리포트 메시지 처리 
+			case Action.Values.IndicatorStatusReport :
+				this.mwSender.sendResponse(siteDomain.getId(), msgId, sourceId, new IndicatorStatusReportAck());
+				//this.handleMpiStatusReport(siteDomain, msgObj);
+				break;
+
+			// 7. 시간 정보 동기화 요청에 대한 응답 처리
+			case Action.Values.TimesyncRequest :
+				// 요청에 대한 응답 메시지 전송.
+				this.mwSender.sendResponse(siteDomain.getId(), msgId, sourceId, new TimesyncRequestAck());
+				// 시간 정보 동기화 응답 처리.
+				this.respondTimesync(siteDomain, stageCd, msgObj);
+				break;
+
+			// 8. Error Report 메시지 처리
+			case Action.Values.ErrorReport :
+				this.mwSender.sendResponse(siteDomain.getId(), msgId, sourceId, new ErrorReportAck());
+				//this.handleErrorReport(siteDomain, msgObj);
+				break;
+
+			// 9. 미들웨어 접속 정보 변경
+			case Action.Values.MiddlewareConnInfoModResponse :
+				this.mwSender.sendResponse(siteDomain.getId(), msgId, sourceId, new MiddlewareConnInfoModResponseAck());
+				//this.handleMwConnectionModification(siteDomain, msgObj);
+				break;
+
+			// 10. 장비 (Kiosk, Tablet, PDA) 상태 보고 
+			case Action.Values.EquipStatusReport :
+				//this.handleEquipStatusReport(siteDomain, msgObj);
+				break;
+			
+			// 11. Unkown action 메시지 처리
+			default :
+				this.handleUnkownMessage(siteDomain, msgObj);
+		}		
 	}
 
 	/**
@@ -135,8 +240,59 @@ public class MqMessageReceiver extends MqCommon  {
 	 * @param siteDomain
 	 * @param msgObj
 	 */
-	/*private void handleUnkownMessage(Domain siteDomain, MessageObject msgObj) {
+	private void handleUnkownMessage(Domain siteDomain, MessageObject msgObj) {
 		throw new ElidomRuntimeException("Unknown type Message Received");
-	}*/
+	}
+
+	/**
+	 * 게이트웨이 초기화 요청에 대한 응답 처리.
+	 * 
+	 * @param siteDomain
+	 * @param stageCd
+	 * @param msgObj
+	 */
+	private void respondGatewayInit(Domain siteDomain, String stageCd, MessageObject msgObj) {
+		GatewayInitRequest gwInitReq = (GatewayInitRequest) msgObj.getBody();
+		Gateway gw = AnyEntityUtil.findEntityBy(siteDomain.getId(), true, Gateway.class, "domainId,stageCd,gwNm", siteDomain.getId(), stageCd, gwInitReq.getId());
+		this.indHandlerService.handleGatewayBootReq(gw);
+	}
+	
+	/**
+	 * Gateway 초기화 Report에 대한 처리.
+	 * 
+	 * @param siteDomain
+	 * @param stageCd
+	 * @param msgObj
+	 */
+	private void handleGwInitReport(Domain siteDomain, String stageCd, MessageObject msgObj) {
+		GatewayInitReport gwInitRtp = (GatewayInitReport) msgObj.getBody();
+		Gateway gw = AnyEntityUtil.findEntityBy(siteDomain.getId(), true, Gateway.class, "domainId,stageCd,gwCd", siteDomain.getId(), stageCd, gwInitRtp.getId());
+		this.indHandlerService.handleGatewayInitReport(gw, gwInitRtp.getVersion());
+	}
+
+	/**
+	 * Indicator 초기화 리포트에 대한 처리. (Indicator Version 정보 Update)
+	 * 
+	 * @param siteDomain
+	 * @param stageCd
+	 * @param msgObj
+	 */
+	private void handleIndInitReport(Domain siteDomain, String stageCd, MessageObject msgObj) {
+		Long domainId = siteDomain.getId();
+		IndicatorInitReport indInitRpt = (IndicatorInitReport) msgObj.getBody();
+		Indicator indicator = AnyEntityUtil.findEntityBy(domainId, true, Indicator.class, "domainId,indCd", domainId, indInitRpt.getId());
+		this.indHandlerService.handleIndicatorInitReport(indicator, indInitRpt.getVersion());
+	}
+	
+	/**
+	 * 타임 서버가 별도 존재하지 않으므로, 시스템이 타임서버 역할을 해 게이트웨이와 시간 동기화
+	 * 
+	 * @param siteDomain
+	 * @param stageCd
+	 * @param msgObj
+	 */
+	private void respondTimesync(Domain siteDomain, String stageCd, MessageObject msgObj) {
+		this.indHandlerService.handleTimesyncReq(siteDomain.getId(), msgObj.getProperties().getSourceId());
+	}
 
 }
