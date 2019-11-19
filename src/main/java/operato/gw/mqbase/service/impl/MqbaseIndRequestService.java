@@ -11,13 +11,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import xyz.anythings.base.LogisConstants;
+import xyz.anythings.base.query.util.IndicatorQueryUtil;
 import xyz.anythings.gw.GwConstants;
 import xyz.anythings.gw.entity.Deployment;
 import xyz.anythings.gw.entity.Gateway;
 import xyz.anythings.gw.service.api.IIndRequestService;
 import xyz.anythings.gw.service.model.IGwIndInit;
 import xyz.anythings.gw.service.model.IIndOnInfo;
-import xyz.anythings.gw.service.model.IndOffReq;
+import xyz.anythings.gw.service.model.IndCommonReq;
 import xyz.anythings.gw.service.mq.MqSender;
 import xyz.anythings.gw.service.mq.model.GatewayDepRequest;
 import xyz.anythings.gw.service.mq.model.GatewayInitResIndList;
@@ -48,7 +49,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 미들웨어로 메시지를 전송하기 위한 유틸리티
 	 */
 	@Autowired
-	private MqSender mwMsgSender;
+	private MqSender mqSender;
 	
 	@Override
 	public IIndOnInfo newIndicatorInfomration() {
@@ -58,6 +59,11 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	@Override
 	public IGwIndInit newGwIndicatorInit() {
 		return new GatewayInitResIndList();
+	}
+	
+	@Override
+	public String findGwPath(Long domainId, String indCd) {
+		return IndicatorQueryUtil.findGatewayPathByIndCd(domainId, indCd);
 	}
 	
 	/**
@@ -95,7 +101,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 		if (ValueUtil.isNotEmpty(indOnList)) {
 			indOnList.forEach((gwPath, indsOn) -> {
 				MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
-				this.mwMsgSender.send(domainId, property, new IndicatorOnRequest(jobType, actionType, this.convertIndOnList(indsOn)));
+				this.mqSender.send(domainId, property, new IndicatorOnRequest(jobType, actionType, this.convertIndOnList(indsOn)));
 			});
 		}
 	}
@@ -104,14 +110,14 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 여러 표시기 한꺼번에 재고 실사용 점등 요청
 	 * 
 	 * @param domainId
-	 * @param stockIndOnList
+	 * @param stockIndOnList - key : gwPath, value : indOnInfo
 	 */
 	@Override
 	public void requestIndListOnForStocktake(Long domainId, Map<String, List<IIndOnInfo>> stockIndOnList) {
 		if (ValueUtil.isNotEmpty(stockIndOnList)) {
 			stockIndOnList.forEach((gwPath, stockOnList) -> {
 				MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
-				this.mwMsgSender.send(domainId, property, new IndicatorOnRequest(LogisConstants.JOB_TYPE_DPS, GwConstants.IND_ACTION_TYPE_STOCK, this.convertIndOnList(stockOnList)));
+				this.mqSender.send(domainId, property, new IndicatorOnRequest(LogisConstants.JOB_TYPE_DPS, GwConstants.IND_ACTION_TYPE_STOCK, this.convertIndOnList(stockOnList)));
 			});
 		}
 	}
@@ -132,7 +138,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 					indOnInfo.setBtnMode(BatchIndConfigUtil.IND_BUTTON_MODE_STOP);
 				}
 				
-				this.mwMsgSender.send(domainId, property, new IndicatorOnRequest(jobType, GwConstants.IND_ACTION_TYPE_INSPECT, this.convertIndOnList(indOnList)));
+				this.mqSender.send(domainId, property, new IndicatorOnRequest(jobType, GwConstants.IND_ACTION_TYPE_INSPECT, this.convertIndOnList(indOnList)));
 			});
 		}
 	}
@@ -176,23 +182,6 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 
 	 * @param domainId
 	 * @param jobType
-	 * @param indCd
-	 * @param bizId
-	 * @param actionType
-	 * @param color
-	 * @param boxQty
-	 * @param eaQty
-	 */
-	/*public void requestCommonIndOn(Long domainId, String jobType, String indCd, String bizId, String actionType, String color, Integer boxQty, Integer eaQty) {
-		String gwPath = GwQueryUtil.findGatewayPathByIndCd(domainId, indCd);
-		requestCommonIndOn(domainId, jobType, indCd, gwPath, bizId, actionType, color, boxQty, eaQty);
-	}*/
-	
-	/**
-	 * 하나의 표시기에 액션 타입별 점등 요청 
-	 * 
-	 * @param domainId
-	 * @param jobType
 	 * @param gwPath
 	 * @param indCd
 	 * @param bizId
@@ -204,20 +193,20 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	@Override
 	public void requestIndOn(Long domainId, String jobType, String gwPath, String indCd, String bizId, String actionType, String color, Integer boxQty, Integer eaQty) {
 		MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
-		List<IndicatorOnInformation> indOnList = new ArrayList<IndicatorOnInformation>(1);
 		IndicatorOnInformation indOnInfo = new IndicatorOnInformation();
 		indOnInfo.setId(indCd);
 		indOnInfo.setBizId(bizId);
 		indOnInfo.setColor(color);
 		indOnInfo.setOrgBoxQty(boxQty);
 		indOnInfo.setOrgEaQty(eaQty);
-		indOnList.add(indOnInfo);
-		this.mwMsgSender.send(domainId, property, new IndicatorOnRequest(jobType, actionType, indOnList));
+		List<IndicatorOnInformation> indOnList = ValueUtil.toList(indOnInfo);
+		this.mqSender.send(domainId, property, new IndicatorOnRequest(jobType, actionType, indOnList));
 	}	
 	
 	/**********************************************************************
 	 * 							2. 표시기 Off 요청
-	 **********************************************************************/	
+	 **********************************************************************/
+	
 	/**
 	 * 표시기 하나에 대한 소등 요청 
 	 * 
@@ -228,11 +217,10 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 */
 	@Override
 	public void requestIndOff(Long domainId, String gwPath, String indCd, boolean forceOff) {
-		//String gwPath = GwQueryUtil.findGatewayPathByIndCd(domainId, indCd);
 		IndicatorOffRequest indOff = new IndicatorOffRequest();
 		indOff.setIndOff(ValueUtil.newStringList(indCd));
 		indOff.setForceFlag(forceOff);
-		this.mwMsgSender.sendRequest(domainId, gwPath, indOff);
+		this.mqSender.sendRequest(domainId, gwPath, indOff);
 	}
 	
 	/**
@@ -279,7 +267,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 			indOff.setForceFlag(forceOff);
 			// 현재는 forceOff와 endOff가 동일값을 가짐
 			indOff.setEndOffFlag(forceOff);
-			this.mwMsgSender.sendRequest(domainId, gwPath, indOff);
+			this.mqSender.sendRequest(domainId, gwPath, indOff);
 		}
 	}
 	
@@ -291,12 +279,12 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * @param forceOff 강제 소등 여부
 	 */
 	@Override
-	public void requestIndListOff(Long domainId, List<IndOffReq> indList, boolean forceOff) {
+	public void requestIndListOff(Long domainId, List<IndCommonReq> indList, boolean forceOff) {
 		// 1. 게이트웨이 별로 표시기 리스트를 보내서 소등 요청을 한다.
 		Map<String, List<String>> indsByGwPath = new HashMap<String, List<String>>();
 		String prevGwPath = null;
 		
-		for(IndOffReq indOff : indList) {
+		for(IndCommonReq indOff : indList) {
 			String gwPath = indOff.getGwPath();
 			
 			if(ValueUtil.isNotEqual(gwPath, prevGwPath)) {
@@ -315,36 +303,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 			this.requestIndListOff(domainId, gwPath, gwIndList, forceOff);
 		}
 	}
-	
-	/**
-	 * 호기 및 장비 작업 존 별 표시기 Off 요청 전송 
-	 * 
-	 * @param domainId
-	 * @param rackCd
-	 * @param equipZoneCd
-	 * @param sideCd
-	 */
-	/*public void requestIndOffByEquipZone(Long domainId, String rackCd, String equipZoneCd, String sideCd) {
-		// 1. 로케이션 정보로 부터 호기, 장비 존, 호기 사이드 코드로 표시기, 게이트웨이 정보를 추출한다. 
-		List<IndOffReq> indList = GwQueryUtil.searchIndByEquipZone(domainId, rackCd, equipZoneCd, sideCd);
-		// 2. 표시기별 소등 요청
-		this.requestOffByIndList(domainId, indList, false);
-	}*/
-	
-	/**
-	 * 호기 및 작업 스테이션 별 표시기 Off 요청 전송 
-	 * 
-	 * @param domainId
-	 * @param rackCd
-	 * @param zoneCd
-	 */
-	/*public void requestIndOffByStation(Long domainId, String rackCd, String zoneCd) {
-		// 1. 로케이션 정보로 부터 호기, 장비 존, 호기 사이드 코드로 표시기, 게이트웨이 정보를 추출한다. 
-		List<IndOffReq> indList = GwQueryUtil.searchIndByStation(domainId, rackCd, zoneCd);
-		// 2. 표시기별 소등 요청
-		this.requestOffByIndList(domainId, indList, false);
-	}*/
-	
+		
 	/**********************************************************************
 	 * 							3. 표시기 숫자, 문자 표시 요청
 	 **********************************************************************/		
@@ -361,7 +320,6 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 */
 	@Override
 	public void requestIndEndDisplay(Long domainId, String jobType, String gwPath, String indCd, String bizId, boolean finalEnd) {
-		//String gwPath = GwQueryUtil.findGatewayPathByIndCd(domainId, indCd);
 		MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
 		IndicatorOnInformation indOnInfo = new IndicatorOnInformation();
 		indOnInfo.setId(indCd);
@@ -369,7 +327,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 		indOnInfo.setEndFullBox(!finalEnd);
 		IndicatorOnRequest indOnReq = new IndicatorOnRequest(jobType, GwConstants.IND_BIZ_FLAG_END, ValueUtil.toList(indOnInfo));
 		indOnReq.setReadOnly(finalEnd);
-		this.mwMsgSender.send(domainId, property, indOnReq);		
+		this.mqSender.send(domainId, property, indOnReq);		
 	}
 	
 	/**
@@ -446,19 +404,17 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 */
 	@Override
 	public void requestIndDisplay(Long domainId, String jobType, String gwPath, String indCd, String bizId, String displayActionType, boolean readOnly, Integer firstSegQty, Integer secondSegQty, Integer thirdSegQty) {
-		//String gwPath = GwQueryUtil.findGatewayPathByIndCd(domainId, indCd);
 		MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
-		List<IndicatorOnInformation> indOnList = new ArrayList<IndicatorOnInformation>(1);
 		IndicatorOnInformation indOnInfo = new IndicatorOnInformation();
 		indOnInfo.setId(indCd);
 		indOnInfo.setBizId(bizId);
 		indOnInfo.setOrgRelay(firstSegQty);
 		indOnInfo.setOrgBoxQty(secondSegQty);
 		indOnInfo.setOrgEaQty(thirdSegQty);
-		indOnList.add(indOnInfo);
+		List<IndicatorOnInformation> indOnList = ValueUtil.toList(indOnInfo);
 		IndicatorOnRequest indOnReq = new IndicatorOnRequest(jobType, displayActionType, indOnList);
 		indOnReq.setReadOnly(readOnly);
-		this.mwMsgSender.send(domainId, property, indOnReq);
+		this.mqSender.send(domainId, property, indOnReq);
 	}
 	
 	/**
@@ -478,9 +434,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 */
 	@Override
 	public void requestIndDisplay(Long domainId, String jobType, String gwPath, String indCd, String bizId, String displayActionType, String[] segRole, boolean readOnly, Integer firstSegQty, Integer secondSegQty, Integer thirdSegQty) {
-		//String gwPath = GwQueryUtil.findGatewayPathByIndCd(domainId, indCd);
 		MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
-		List<IndicatorOnInformation> indOnList = new ArrayList<IndicatorOnInformation>(1);
 		IndicatorOnInformation indOnInfo = new IndicatorOnInformation();
 		indOnInfo.setId(indCd);
 		indOnInfo.setBizId(bizId);
@@ -488,10 +442,10 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 		indOnInfo.setOrgRelay(firstSegQty);
 		indOnInfo.setOrgBoxQty(secondSegQty);
 		indOnInfo.setOrgEaQty(thirdSegQty);
-		indOnList.add(indOnInfo);
+		List<IndicatorOnInformation> indOnList = ValueUtil.toList(indOnInfo);
 		IndicatorOnRequest indOnReq = new IndicatorOnRequest(jobType, displayActionType, indOnList);
 		indOnReq.setReadOnly(readOnly);
-		this.mwMsgSender.send(domainId, property, indOnReq);
+		this.mqSender.send(domainId, property, indOnReq);
 	}
 	
 	/**
@@ -508,17 +462,16 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	@Override
 	public void requestIndDisplayAccumQty(Long domainId, String jobType, String gwPath, String indCd, String bizId, Integer accumQty, Integer pickedQty) {
 		MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
-		List<IndicatorOnInformation> indOnList = new ArrayList<IndicatorOnInformation>(1);
 		IndicatorOnInformation indOnInfo = new IndicatorOnInformation();
 		indOnInfo.setId(indCd);
 		indOnInfo.setBizId(bizId);
 		indOnInfo.setSegRole(new String[] { BatchIndConfigUtil.IND_SEGMENT_ROLE_RELAY_SEQ, BatchIndConfigUtil.IND_SEGMENT_ROLE_PCS });
 		indOnInfo.setOrgAccmQty(accumQty);
 		indOnInfo.setOrgEaQty(pickedQty);
-		indOnList.add(indOnInfo);
+		List<IndicatorOnInformation> indOnList = ValueUtil.toList(indOnInfo);
 		IndicatorOnRequest indOnReq = new IndicatorOnRequest(jobType, GwConstants.IND_ACTION_TYPE_DISPLAY, indOnList);
 		indOnReq.setReadOnly(true);
-		this.mwMsgSender.send(domainId, property, indOnReq);
+		this.mqSender.send(domainId, property, indOnReq);
 	}
 		
 	/**
@@ -548,18 +501,13 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 */
 	@Override
 	public void requestShowString(Long domainId, String jobType, String gwPath, String indCd, String bizId, String displayStr) {
-//		if(ValueUtil.isEmpty(gwPath)) {
-//			gwPath = GwQueryUtil.findGatewayPathByIndCd(domainId, indCd);
-//		}
-		
 		MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
-		List<IndicatorOnInformation> indOnList = new ArrayList<IndicatorOnInformation>(1);
 		IndicatorOnInformation indOnInfo = new IndicatorOnInformation();
 		indOnInfo.setId(indCd);
 		indOnInfo.setBizId(bizId);
 		indOnInfo.setViewStr(displayStr);
-		indOnList.add(indOnInfo);
-		this.mwMsgSender.send(domainId, property, new IndicatorOnRequest(jobType, GwConstants.IND_ACTION_TYPE_STR_SHOW, indOnList));
+		List<IndicatorOnInformation> indOnList = ValueUtil.toList(indOnInfo);
+		this.mqSender.send(domainId, property, new IndicatorOnRequest(jobType, GwConstants.IND_ACTION_TYPE_STR_SHOW, indOnList));
 	}
 
 	/**
@@ -591,19 +539,17 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 */
 	@Override
 	public void requestDisplayLeftStringRightQty(Long domainId, String jobType, String gwPath, String indCd, String bizId, String leftStr, Integer rightQty) {		
-		//String gwPath = GwQueryUtil.findGatewayPathByIndCd(domainId, indCd);
 		MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
-		List<IndicatorOnInformation> indOnList = new ArrayList<IndicatorOnInformation>(1);
 		IndicatorOnInformation indOnInfo = new IndicatorOnInformation();
 		indOnInfo.setId(indCd);
 		indOnInfo.setBizId(bizId);
 		indOnInfo.setSegRole(new String[] { BatchIndConfigUtil.IND_SEGMENT_ROLE_STR, BatchIndConfigUtil.IND_SEGMENT_ROLE_PCS });
 		indOnInfo.setViewStr(leftStr);
 		indOnInfo.setOrgEaQty(rightQty);
-		indOnList.add(indOnInfo);
+		List<IndicatorOnInformation> indOnList = ValueUtil.toList(indOnInfo);
 		IndicatorOnRequest indOnReq = new IndicatorOnRequest(jobType, GwConstants.IND_ACTION_TYPE_DISPLAY, indOnList);
 		indOnReq.setReadOnly(true);
-		this.mwMsgSender.send(domainId, property, indOnReq);
+		this.mqSender.send(domainId, property, indOnReq);
 	}
 	
 	/**
@@ -652,9 +598,8 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 		LedOnRequest ledOnReq = new LedOnRequest();
 		ledOnReq.setId(indCd);
 		ledOnReq.setLedBarBrtns(ledBarBrightness);
-		//String gwPath = GwQueryUtil.findGatewayPathByIndCd(domainId, indCd);
 		MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
-		this.mwMsgSender.send(domainId, property, ledOnReq);
+		this.mqSender.send(domainId, property, ledOnReq);
 	}
 	
 	/**
@@ -668,9 +613,8 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	public void requestLedOff(Long domainId, String gwPath, String indCd) {
 		LedOffRequest ledOffReq = new LedOffRequest();
 		ledOffReq.setId(indCd);
-		//String gwPath = GwQueryUtil.findGatewayPathByIndCd(domainId, indCd);
 		MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
-		this.mwMsgSender.send(domainId, property, ledOffReq);		
+		this.mqSender.send(domainId, property, ledOffReq);		
 	}
 	
 	/**
@@ -681,12 +625,12 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * @param ledBrightness
 	 */
 	@Override
-	public void requestLedListOn(Long domainId, List<IndOffReq> indList, Integer ledBrightness) {
+	public void requestLedListOn(Long domainId, List<IndCommonReq> indList, Integer ledBrightness) {
 		// 1. 게이트웨이 별로 표시기 리스트를 보내서 점등 요청을 한다.
 		Map<String, List<String>> indsByGwPath = new HashMap<String, List<String>>();
 		String prevGwPath = null;
 		
-		for(IndOffReq indOff : indList) {
+		for(IndCommonReq indOff : indList) {
 			String gwPath = indOff.getGwPath();
 			
 			if(ValueUtil.isNotEqual(gwPath, prevGwPath)) {
@@ -709,7 +653,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 				ledOnReq.setId(indCd);
 				ledOnReq.setLedBarBrtns(ledBrightness);
 				MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
-				this.mwMsgSender.send(domainId, property, ledOnReq);			
+				this.mqSender.send(domainId, property, ledOnReq);			
 			}			
 		}
 	}
@@ -721,12 +665,12 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * @param indList
 	 */
 	@Override
-	public void requestLedListOff(Long domainId, List<IndOffReq> indList) {
+	public void requestLedListOff(Long domainId, List<IndCommonReq> indList) {
 		// 1. 게이트웨이 별로 표시기 리스트를 보내서 점등 요청을 한다.
 		Map<String, List<String>> indsByGwPath = new HashMap<String, List<String>>();
 		String prevGwPath = null;
 		
-		for(IndOffReq indOff : indList) {
+		for(IndCommonReq indOff : indList) {
 			String gwPath = indOff.getGwPath();
 			
 			if(ValueUtil.isNotEqual(gwPath, prevGwPath)) {
@@ -748,7 +692,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 				LedOffRequest ledOnReq = new LedOffRequest();
 				ledOnReq.setId(indCd);
 				MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
-				this.mwMsgSender.send(domainId, property, ledOnReq);			
+				this.mqSender.send(domainId, property, ledOnReq);			
 			}			
 		}
 	}
@@ -791,7 +735,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 		gwDeploy.setVersion(gwVersion);
 		gwDeploy.setFilename(filename);
 		gwDeploy.setForceFlag(forceFlag);
-		this.mwMsgSender.sendRequest(domainId, gwChannel, gwDeploy);
+		this.mqSender.sendRequest(domainId, gwChannel, gwDeploy);
 	}
 	
 	/**
@@ -811,54 +755,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 		indDeploy.setIndUrl(indFwDownloadUrl);
 		indDeploy.setFilename(filename);
 		indDeploy.setForceFlag(forceFlag);
-		this.mwMsgSender.sendRequest(domainId, gwChannel, indDeploy);
+		this.mqSender.sendRequest(domainId, gwChannel, indDeploy);
 	}
 
-	/**********************************************************************
-	 * 							5. 게이트웨이 초기화 요청
-	 **********************************************************************/	
-	
-	/**
-	 * 게이트웨이 초기화 응답 전송.
-	 * 
-	 * @param domainId
-	 * @param msgDestId
-	 * @param gatewayInitRes
-	 */
-	/*@Override
-	public void respondGatewayInit(Long domainId, String msgDestId, GatewayInitResponse gatewayInitRes) {
-		this.mwMsgSender.sendRequest(domainId, msgDestId, gatewayInitRes);
-	}*/
-	
-	/**********************************************************************
-	 * 							5. 미들웨어 정보 변경 요청
-	 **********************************************************************/	
-
-	/**
-	 * 게이트웨이에 미들웨어 접속 정보 변경 요청
-	 * 
-	 * @param domainId
-	 * @param msgDestId
-	 * @param mwConnModifyReq
-	 */
-	/*@Override
-	public void requestMwConnectionModify(Long domainId, String msgDestId, MiddlewareConnInfoModRequest mwConnModifyReq) {
-		this.mwMsgSender.sendRequest(domainId, msgDestId, mwConnModifyReq);
-	}*/
-	
-	/**********************************************************************
-	 * 							5. 게이트웨이 시스템 시간 동기화 
-	 **********************************************************************/	
-
-	/**
-	 * 게이트웨이와 시스템간의 시간 동기화 응답 요청.
-	 * 
-	 * @param domainId
-	 * @param msgDestId
-	 * @param serverTime
-	 */
-	/*@Override
-	public void respondTimesync(Long domainId, String msgDestId, long serverTime) {
-		this.mwMsgSender.sendRequest(domainId, msgDestId, new TimesyncResponse(serverTime));
-	}*/
 }
