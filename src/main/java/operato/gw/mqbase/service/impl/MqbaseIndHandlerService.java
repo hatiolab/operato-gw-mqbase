@@ -121,7 +121,7 @@ public class MqbaseIndHandlerService extends AbstractExecutionService implements
 		gwInitRes.setHealthPeriod(healthPeriod);
 		
 		// 9. 게이트웨이 초기화 응답 전송 
-		this.mqSender.sendRequest(domainId, gateway.getGwNm(), gwInitRes);
+		this.mqSender.sendRequest(domainId, gateway.getStageCd(), gateway.getGwNm(), gwInitRes);
 		
 		// 10. 게이트웨이 부트 후 처리
 		GatewayBootEvent gwBootAfter = new GatewayBootEvent(GatewayInitEvent.EVENT_STEP_AFTER, gateway);
@@ -132,9 +132,9 @@ public class MqbaseIndHandlerService extends AbstractExecutionService implements
 	}
 	
 	@Override
-	public void handleTimesyncReq(Long domainId, String msgDestId) {
+	public void handleTimesyncReq(Long domainId, String stageCd, String msgDestId) {
 		long serverTime = new Date().getTime();
-		this.mqSender.sendRequest(domainId, msgDestId, new TimesyncResponse(serverTime));
+		this.mqSender.sendRequest(domainId, stageCd, msgDestId, new TimesyncResponse(serverTime));
 	}
 	
 	@Override
@@ -158,9 +158,9 @@ public class MqbaseIndHandlerService extends AbstractExecutionService implements
 	}
 	
 	@Override
-	public void handleIndicatorInitReport(Indicator indicator, Object ... params) {
+	public void handleIndicatorInitReport(Indicator indicator, String stageCd, Object ... params) {
 		// 1. 표시기 상태 보고 전 처리, TODO 이벤트 전송 여부를 설정 정보로 처리 
-		IndicatorInitEvent indInitBefore = new IndicatorInitEvent(GatewayInitEvent.EVENT_STEP_BEFORE, indicator);
+		IndicatorInitEvent indInitBefore = new IndicatorInitEvent(GatewayInitEvent.EVENT_STEP_BEFORE, indicator, stageCd);
 		this.eventPublisher.publishEvent(indInitBefore);
 		
 		// 2. 표시기 상태 보고 처리
@@ -173,7 +173,7 @@ public class MqbaseIndHandlerService extends AbstractExecutionService implements
 		}
 		
 		// 3. 게이트웨이 상태 보고 후 처리 
-		IndicatorInitEvent indInitAfter = new IndicatorInitEvent(GatewayInitEvent.EVENT_STEP_AFTER, indicator);
+		IndicatorInitEvent indInitAfter = new IndicatorInitEvent(GatewayInitEvent.EVENT_STEP_AFTER, indicator, stageCd);
 		this.eventPublisher.publishEvent(indInitAfter);
 	}
 	
@@ -184,7 +184,7 @@ public class MqbaseIndHandlerService extends AbstractExecutionService implements
 	}
 
 	@Override
-	public void handleIndicatorStatusReport(Indicator indicator, String status, String version, Object... params) {
+	public void handleIndicatorStatusReport(Indicator indicator, String stageCd, String status, String version, Object... params) {
 		// 1. 상태가 접속 해제인 경우 
 		if (ValueUtil.isEqualIgnoreCase(status, GwConstants.EQUIP_STATUS_OFFLINE)) {
 			if(indicator != null) {
@@ -202,14 +202,6 @@ public class MqbaseIndHandlerService extends AbstractExecutionService implements
 				indicator.setVersion(version);
 				indicator.setStatus(LogisConstants.EQUIP_STATUS_OK);
 				this.queryManager.update(indicator, "version", "status");
-				
-				/*if(params != null) {
-					String battery = ValueUtil.toString(params[0]);
-					String rssi = (params.length >= 2) ? ValueUtil.toString(params[1]) : null;
-					indicator.setBatteryRate(Integer.parseInt(battery));
-					indicator.setRssi(Integer.parseInt(rssi));
-				}
-				this.queryManager.update(indicator, "version", "status", "batteryRate", "rssi");*/
 			}
 			
 			//this.saveEquipmentLog(domainId, MpsConstants.EQUIP_INDICATOR, mpiCd, gatewayPath, EquipmentLog.LOG_LEVEL_INFO, status);
@@ -260,7 +252,7 @@ public class MqbaseIndHandlerService extends AbstractExecutionService implements
 					connModifyReq.setMwTopicId(mwSiteCd, connModifyReq.getMwClientId());
 			
 					// 3. 각 게이트웨이에 접속 정보 변경 요청
-					this.mqSender.sendRequest(domainId, gw.getGwNm(), connModifyReq);
+					this.mqSender.sendRequest(domainId, gw.getStageCd(), gw.getGwNm(), connModifyReq);
 				}				
 			}
 		}

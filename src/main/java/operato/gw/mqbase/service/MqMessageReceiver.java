@@ -292,7 +292,7 @@ public class MqMessageReceiver extends MqCommon {
 	 * @param msgObj
 	 */
 	private void respondTimesync(Domain siteDomain, String stageCd, MessageObject msgObj) {
-		this.indHandlerService.handleTimesyncReq(siteDomain.getId(), msgObj.getProperties().getSourceId());
+		this.indHandlerService.handleTimesyncReq(siteDomain.getId(), stageCd, msgObj.getProperties().getSourceId());
 	}
 
 }
