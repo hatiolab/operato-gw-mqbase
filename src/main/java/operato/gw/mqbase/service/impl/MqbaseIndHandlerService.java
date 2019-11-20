@@ -1,6 +1,5 @@
 package operato.gw.mqbase.service.impl;
 
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -19,7 +18,6 @@ import xyz.anythings.gw.event.GatewayBootEvent;
 import xyz.anythings.gw.event.GatewayInitEvent;
 import xyz.anythings.gw.event.IndicatorInitEvent;
 import xyz.anythings.gw.service.api.IIndHandlerService;
-import xyz.anythings.gw.service.model.IGwIndInit;
 import xyz.anythings.gw.service.mq.MqSender;
 import xyz.anythings.gw.service.mq.model.GatewayInitResGwConfig;
 import xyz.anythings.gw.service.mq.model.GatewayInitResIndConfig;
@@ -76,10 +74,10 @@ public class MqbaseIndHandlerService extends AbstractExecutionService implements
 	 * 
 	 * @param gateway
 	 * @param batchId
-	 * @param indList
+	 * @param gwIndInitList
 	 * @return
 	 */
-	public boolean handleGatewayBootReq(Gateway gateway, String batchId, List<GatewayInitResIndList> indList) {
+	public boolean handleGatewayBootReq(Gateway gateway, String batchId, List<GatewayInitResIndList> gwIndInitList) {
 		// 1. 게이트웨이 부트 전 처리
 		GatewayBootEvent gwBootBefore = new GatewayBootEvent(GatewayInitEvent.EVENT_STEP_BEFORE, gateway);
 		this.eventPublisher.publishEvent(gwBootBefore);
@@ -90,11 +88,6 @@ public class MqbaseIndHandlerService extends AbstractExecutionService implements
 		gwInitRes.setGwConf(this.newGatewayInitConfig(gateway));
 		
 		// 3. Gateway 소속 표시기 List를 설정
-		List<GatewayInitResIndList> gwIndInitList = new ArrayList<GatewayInitResIndList>(indList.size());
-		for(IGwIndInit gwIndInit : indList) {
-			GatewayInitResIndList gwIntResInd = (GatewayInitResIndList)gwIndInit;
-			gwIndInitList.add(gwIntResInd);
-		}
 		gwInitRes.setIndList(gwIndInitList);
 		
 		// 4. Gateway가 관리하는 인디케이터 리스트 및 각각의 Indicator 별 설정 정보 조회 후 설정	

@@ -100,7 +100,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	public void requestIndListOn(Long domainId, String stageCd, String jobType, String actionType, Map<String, List<IIndOnInfo>> indOnList) {
 		if (ValueUtil.isNotEmpty(indOnList)) {
 			indOnList.forEach((gwPath, indsOn) -> {
-				MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
+				MessageProperties property = MwMessageUtil.newReqMessageProp(stageCd, gwPath);
 				this.mqSender.send(domainId, stageCd, property, new IndicatorOnRequest(jobType, actionType, this.convertIndOnList(indsOn)));
 			});
 		}
@@ -116,7 +116,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	public void requestIndListOnForStocktake(Long domainId, String stageCd, Map<String, List<IIndOnInfo>> stockIndOnList) {
 		if (ValueUtil.isNotEmpty(stockIndOnList)) {
 			stockIndOnList.forEach((gwPath, stockOnList) -> {
-				MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
+				MessageProperties property = MwMessageUtil.newReqMessageProp(stageCd, gwPath);
 				this.mqSender.send(domainId, stageCd, property, new IndicatorOnRequest(LogisConstants.JOB_TYPE_DPS, GwConstants.IND_ACTION_TYPE_STOCK, this.convertIndOnList(stockOnList)));
 			});
 		}
@@ -133,7 +133,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	public void requestIndListOnForInspect(Long domainId, String stageCd, String jobType, Map<String, List<IIndOnInfo>> indOnForInspectList) {
 		if (ValueUtil.isNotEmpty(indOnForInspectList)) {
 			indOnForInspectList.forEach((gwPath, indOnList) -> {
-				MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
+				MessageProperties property = MwMessageUtil.newReqMessageProp(stageCd, gwPath);
 				for(IIndOnInfo indOnInfo : indOnList) {
 					indOnInfo.setBtnMode(BatchIndConfigUtil.IND_BUTTON_MODE_STOP);
 				}
@@ -192,7 +192,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 */
 	@Override
 	public void requestIndOn(Long domainId, String stageCd, String jobType, String gwPath, String indCd, String bizId, String actionType, String color, Integer boxQty, Integer eaQty) {
-		MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
+		MessageProperties property = MwMessageUtil.newReqMessageProp(stageCd, gwPath);
 		IndicatorOnInformation indOnInfo = new IndicatorOnInformation();
 		indOnInfo.setId(indCd);
 		indOnInfo.setBizId(bizId);
@@ -320,7 +320,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 */
 	@Override
 	public void requestIndEndDisplay(Long domainId, String stageCd, String jobType, String gwPath, String indCd, String bizId, boolean finalEnd) {
-		MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
+		MessageProperties property = MwMessageUtil.newReqMessageProp(stageCd, gwPath);
 		IndicatorOnInformation indOnInfo = new IndicatorOnInformation();
 		indOnInfo.setId(indCd);
 		indOnInfo.setBizId(bizId);
@@ -404,7 +404,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 */
 	@Override
 	public void requestIndDisplay(Long domainId, String stageCd, String jobType, String gwPath, String indCd, String bizId, String displayActionType, boolean readOnly, Integer firstSegQty, Integer secondSegQty, Integer thirdSegQty) {
-		MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
+		MessageProperties property = MwMessageUtil.newReqMessageProp(stageCd, gwPath);
 		IndicatorOnInformation indOnInfo = new IndicatorOnInformation();
 		indOnInfo.setId(indCd);
 		indOnInfo.setBizId(bizId);
@@ -434,7 +434,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 */
 	@Override
 	public void requestIndDisplay(Long domainId, String stageCd, String jobType, String gwPath, String indCd, String bizId, String displayActionType, String[] segRole, boolean readOnly, Integer firstSegQty, Integer secondSegQty, Integer thirdSegQty) {
-		MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
+		MessageProperties property = MwMessageUtil.newReqMessageProp(stageCd, gwPath);
 		IndicatorOnInformation indOnInfo = new IndicatorOnInformation();
 		indOnInfo.setId(indCd);
 		indOnInfo.setBizId(bizId);
@@ -461,7 +461,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 */
 	@Override
 	public void requestIndDisplayAccumQty(Long domainId, String stageCd, String jobType, String gwPath, String indCd, String bizId, Integer accumQty, Integer pickedQty) {
-		MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
+		MessageProperties property = MwMessageUtil.newReqMessageProp(stageCd, gwPath);
 		IndicatorOnInformation indOnInfo = new IndicatorOnInformation();
 		indOnInfo.setId(indCd);
 		indOnInfo.setBizId(bizId);
@@ -501,7 +501,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 */
 	@Override
 	public void requestShowString(Long domainId, String stageCd, String jobType, String gwPath, String indCd, String bizId, String displayStr) {
-		MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
+		MessageProperties property = MwMessageUtil.newReqMessageProp(stageCd, gwPath);
 		IndicatorOnInformation indOnInfo = new IndicatorOnInformation();
 		indOnInfo.setId(indCd);
 		indOnInfo.setBizId(bizId);
@@ -539,7 +539,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 */
 	@Override
 	public void requestDisplayLeftStringRightQty(Long domainId, String stageCd, String jobType, String gwPath, String indCd, String bizId, String leftStr, Integer rightQty) {		
-		MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
+		MessageProperties property = MwMessageUtil.newReqMessageProp(stageCd, gwPath);
 		IndicatorOnInformation indOnInfo = new IndicatorOnInformation();
 		indOnInfo.setId(indCd);
 		indOnInfo.setBizId(bizId);
@@ -598,7 +598,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 		LedOnRequest ledOnReq = new LedOnRequest();
 		ledOnReq.setId(indCd);
 		ledOnReq.setLedBarBrtns(ledBarBrightness);
-		MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
+		MessageProperties property = MwMessageUtil.newReqMessageProp(stageCd, gwPath);
 		this.mqSender.send(domainId, stageCd, property, ledOnReq);
 	}
 	
@@ -613,7 +613,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	public void requestLedOff(Long domainId, String stageCd, String gwPath, String indCd) {
 		LedOffRequest ledOffReq = new LedOffRequest();
 		ledOffReq.setId(indCd);
-		MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
+		MessageProperties property = MwMessageUtil.newReqMessageProp(stageCd, gwPath);
 		this.mqSender.send(domainId, stageCd, property, ledOffReq);		
 	}
 	
@@ -652,7 +652,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 				LedOnRequest ledOnReq = new LedOnRequest();
 				ledOnReq.setId(indCd);
 				ledOnReq.setLedBarBrtns(ledBrightness);
-				MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
+				MessageProperties property = MwMessageUtil.newReqMessageProp(stageCd, gwPath);
 				this.mqSender.send(domainId, stageCd, property, ledOnReq);			
 			}			
 		}
@@ -691,7 +691,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 			for(String indCd : indCdList) {
 				LedOffRequest ledOnReq = new LedOffRequest();
 				ledOnReq.setId(indCd);
-				MessageProperties property = MwMessageUtil.newReqMessageProp(gwPath);
+				MessageProperties property = MwMessageUtil.newReqMessageProp(stageCd, gwPath);
 				this.mqSender.send(domainId, stageCd, property, ledOnReq);			
 			}			
 		}

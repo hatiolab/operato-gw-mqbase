@@ -278,9 +278,10 @@ public class MqMessageReceiver extends MqCommon {
 	 * @param msgObj
 	 */
 	private void handleIndInitReport(Domain siteDomain, String stageCd, MessageObject msgObj) {
-		Long domainId = siteDomain.getId();
 		IndicatorInitReport indInitRpt = (IndicatorInitReport) msgObj.getBody();
-		Indicator indicator = AnyEntityUtil.findEntityBy(domainId, true, Indicator.class, "domainId,indCd", domainId, indInitRpt.getId());
+		String sql = "select * from indicators where domain_id = :domainId and ind_cd = :indCd and gw_cd in (select gw_cd from gateways where domain_id = :domainId and stage_cd = :stageCd)";
+		Map<String, Object> params = ValueUtil.newMap("domainId,indCd,stageCd", siteDomain.getId(), indInitRpt.getId(), stageCd);
+		Indicator indicator = this.queryManager.selectBySql(sql, params, Indicator.class);
 		this.indHandlerService.handleIndicatorInitReport(indicator, indInitRpt.getVersion());
 	}
 	
