@@ -4,11 +4,17 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import operato.gw.mqbase.service.impl.MqbaseIndHandlerService;
+import xyz.anythings.base.entity.JobBatch;
+import xyz.anythings.base.entity.JobInstance;
+import xyz.anythings.base.event.EventConstants;
+import xyz.anythings.base.event.IClassifyRunEvent;
+import xyz.anythings.base.event.classfy.ClassifyRunEvent;
 import xyz.anythings.comm.rabbitmq.event.MwErrorEvent;
 import xyz.anythings.gw.entity.Gateway;
 import xyz.anythings.gw.entity.Indicator;
@@ -23,13 +29,13 @@ import xyz.anythings.gw.service.mq.model.GatewayInitRequestAck;
 import xyz.anythings.gw.service.mq.model.IndicatorInitReport;
 import xyz.anythings.gw.service.mq.model.IndicatorInitReportAck;
 import xyz.anythings.gw.service.mq.model.IndicatorOffResponseAck;
+import xyz.anythings.gw.service.mq.model.IndicatorOnResponse;
 import xyz.anythings.gw.service.mq.model.IndicatorOnResponseAck;
 import xyz.anythings.gw.service.mq.model.IndicatorStatusReportAck;
 import xyz.anythings.gw.service.mq.model.MessageObject;
 import xyz.anythings.gw.service.mq.model.MiddlewareConnInfoModResponseAck;
 import xyz.anythings.gw.service.mq.model.TimesyncRequestAck;
 import xyz.anythings.gw.service.util.MwMessageUtil;
-import xyz.anythings.sys.event.EventPublisher;
 import xyz.anythings.sys.util.AnyEntityUtil;
 import xyz.elidom.exception.server.ElidomRuntimeException;
 import xyz.elidom.rabbitmq.client.event.SystemMessageReceiveEvent;
@@ -74,7 +80,7 @@ public class MqMessageReceiver extends MqCommon {
 	 * Event Publisher
 	 */
 	@Autowired
-	protected EventPublisher eventPublisher;
+	protected ApplicationEventPublisher eventPublisher;
 	/**
 	 * 도메인 맵 : Site Code - Domain
 	 */
@@ -123,7 +129,7 @@ public class MqMessageReceiver extends MqCommon {
 			// 5. MPS에서 요청한 메시지에 대한 응답 (즉 ACK)에 대한 처리.
 			if (ValueUtil.toBoolean(msgObj.getProperties().getIsReply())) {
 				this.handleReplyMessage(siteDomain, event.getStageCd(), msgObj);
-			// 6. 타 시스템 혹은 장비에서 MPS에 요청 메시지에 대한 처리.
+			// 6. 타 시스템 혹은 장비에서 서버에 요청 메시지에 대한 처리.
 			} else {
 				this.handleReceivedMessage(siteDomain, event.getStageCd(), msgObj);
 			}
@@ -168,7 +174,7 @@ public class MqMessageReceiver extends MqCommon {
 			// 1. 버튼 터치 - 표시기 버튼 터치로 인한 작업 처리 메시지 처리 (OK, Full Box, 수정)
 			case Action.Values.IndicatorOnResponse :
 				this.mwSender.sendResponse(siteDomain.getId(), msgId, sourceId, new IndicatorOnResponseAck());
-				//this.handleMpiResponse(siteDomain, msgObj);
+				this.handleIndicatorResponse(siteDomain, stageCd, msgObj);
 				break;
 
 			// 2. Gateway별 표시기 소등 처리
@@ -294,6 +300,33 @@ public class MqMessageReceiver extends MqCommon {
 	 */
 	private void respondTimesync(Domain siteDomain, String stageCd, MessageObject msgObj) {
 		this.indHandlerService.handleTimesyncReq(siteDomain.getId(), stageCd, msgObj.getProperties().getSourceId());
+	}
+
+	/**
+	 * Indicator 응답 처리
+	 * 
+	 * @param siteDomain
+	 * @param stageCd
+	 * @param msgObj
+	 */
+	private void handleIndicatorResponse(Domain siteDomain, String stageCd, MessageObject msgObj) {
+		IndicatorOnResponse indOnRes = (IndicatorOnResponse) msgObj.getBody();
+		String actionType = indOnRes.getActionType();
+		String bizId = indOnRes.getBizId();		
+		Integer reqQty = indOnRes.getOrgEaQty();
+		Integer resQty = indOnRes.getResEaQty();
+		JobInstance job = AnyEntityUtil.findEntityById(false, JobInstance.class, bizId);
+		
+		if(job != null) {
+			JobBatch batch = AnyEntityUtil.findEntityById(true, JobBatch.class, job.getBatchId()); 
+			IClassifyRunEvent exeEvent = new ClassifyRunEvent(batch, EventConstants.EVENT_STEP_ALONE, Indicator.class.getSimpleName(), actionType, job);
+			exeEvent.setReqQty(reqQty);
+			exeEvent.setResQty(resQty);
+			this.eventPublisher.publishEvent(exeEvent);
+			
+		} else {
+			this.logger.error("bizId [" + bizId + "] of message is invalid");
+		}
 	}
 
 }
