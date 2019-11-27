@@ -312,6 +312,7 @@ public class MqMessageReceiver extends MqCommon {
 	private void handleIndicatorResponse(Domain siteDomain, String stageCd, MessageObject msgObj) {
 		IndicatorOnResponse indOnRes = (IndicatorOnResponse) msgObj.getBody();
 		String actionType = indOnRes.getActionType();
+		String bizFlag = indOnRes.getBizFlag();
 		String bizId = indOnRes.getBizId();		
 		Integer reqQty = indOnRes.getOrgEaQty();
 		Integer resQty = indOnRes.getResEaQty();
@@ -319,7 +320,7 @@ public class MqMessageReceiver extends MqCommon {
 		
 		if(job != null) {
 			JobBatch batch = AnyEntityUtil.findEntityById(true, JobBatch.class, job.getBatchId()); 
-			IClassifyRunEvent exeEvent = new ClassifyRunEvent(batch, EventConstants.EVENT_STEP_ALONE, Indicator.class.getSimpleName(), actionType, job);
+			IClassifyRunEvent exeEvent = new ClassifyRunEvent(batch, EventConstants.EVENT_STEP_ALONE, Indicator.class.getSimpleName(), bizFlag, job);
 			exeEvent.setReqQty(reqQty);
 			exeEvent.setResQty(resQty);
 			this.eventPublisher.publishEvent(exeEvent);
