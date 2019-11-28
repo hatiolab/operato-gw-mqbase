@@ -16,6 +16,7 @@ import xyz.anythings.base.event.EventConstants;
 import xyz.anythings.base.event.IClassifyRunEvent;
 import xyz.anythings.base.event.classfy.ClassifyRunEvent;
 import xyz.anythings.comm.rabbitmq.event.MwErrorEvent;
+import xyz.anythings.gw.GwConstants;
 import xyz.anythings.gw.entity.Gateway;
 import xyz.anythings.gw.entity.Indicator;
 import xyz.anythings.gw.service.mq.MqCommon;
@@ -312,6 +313,38 @@ public class MqMessageReceiver extends MqCommon {
 	private void handleIndicatorResponse(Domain siteDomain, String stageCd, MessageObject msgObj) {
 		IndicatorOnResponse indOnRes = (IndicatorOnResponse) msgObj.getBody();
 		String actionType = indOnRes.getActionType();
+		
+		switch(actionType) {
+			case GwConstants.IND_ACTION_TYPE_PICK : {
+				this.handlePickResponse(siteDomain, stageCd, indOnRes);
+				break;
+			}
+			
+			case GwConstants.IND_ACTION_TYPE_STOCK : {
+				// TODO
+				break;
+			}
+			
+			case GwConstants.IND_ACTION_TYPE_INSPECT : {
+				// TODO
+				break;
+			}
+			
+			case GwConstants.IND_ACTION_TYPE_DISPLAY : {
+				// TODO
+				break;
+			}
+		}
+	}
+	
+	/**
+	 * 피킹 요청 처리
+	 * 
+	 * @param siteDomain
+	 * @param stageCd
+	 * @param indOnRes
+	 */
+	private void handlePickResponse(Domain siteDomain, String stageCd, IndicatorOnResponse indOnRes) {
 		String bizFlag = indOnRes.getBizFlag();
 		String bizId = indOnRes.getBizId();		
 		Integer reqQty = indOnRes.getOrgEaQty();
@@ -324,9 +357,8 @@ public class MqMessageReceiver extends MqCommon {
 			exeEvent.setReqQty(reqQty);
 			exeEvent.setResQty(resQty);
 			this.eventPublisher.publishEvent(exeEvent);
-			
 		} else {
-			this.logger.error("bizId [" + bizId + "] of message is invalid");
+			throw new ElidomRuntimeException("bizId [" + bizId + "] of message is invalid");
 		}
 	}
 
