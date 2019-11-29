@@ -59,7 +59,7 @@ public class MqbaseIndHandlerService extends AbstractExecutionService implements
 		String jobType = (batch == null) ? LogisConstants.JOB_TYPE_DAS : batch.getJobType();
 		String stageCd = gateway.getStageCd();
 		String gwPath = gateway.getGwNm();
-		String viewType = StageIndConfigUtil.getIndViewType(domainId, stageCd);
+		String viewType = (batch != null) ? BatchIndConfigUtil.getIndViewType(batch.getId()) : StageIndConfigUtil.getIndViewType(domainId, stageCd);
 		
 		// 2. 게이트웨이 초기화를 위한 게이트웨이 소속의 표시기 리스트를 조회한다.
 		String sql = BeanUtil.get(IndicatorQueryStore.class).getSearchIndListForGwInitQuery();
