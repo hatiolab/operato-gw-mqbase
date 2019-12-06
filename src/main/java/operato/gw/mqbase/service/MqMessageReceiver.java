@@ -10,10 +10,13 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import operato.gw.mqbase.service.impl.MqbaseIndHandlerService;
-import xyz.anythings.base.entity.JobBatch;
+import xyz.anythings.base.LogisCodeConstants;
 import xyz.anythings.base.entity.JobInstance;
+import xyz.anythings.base.entity.WorkCell;
 import xyz.anythings.base.event.EventConstants;
+import xyz.anythings.base.event.IClassifyOutEvent;
 import xyz.anythings.base.event.IClassifyRunEvent;
+import xyz.anythings.base.event.classfy.ClassifyOutEvent;
 import xyz.anythings.base.event.classfy.ClassifyRunEvent;
 import xyz.anythings.comm.rabbitmq.event.MwErrorEvent;
 import xyz.anythings.gw.GwConstants;
@@ -316,7 +319,14 @@ public class MqMessageReceiver extends MqCommon {
 		
 		switch(actionType) {
 			case GwConstants.IND_ACTION_TYPE_PICK : {
-				this.handlePickResponse(siteDomain, stageCd, indOnRes);
+				String bizFlag = indOnRes.getBizFlag();
+				
+				if(ValueUtil.isEqualIgnoreCase(bizFlag, LogisCodeConstants.CLASSIFICATION_ACTION_FULL)) {
+					this.handleFullboxResponse(siteDomain, stageCd, indOnRes);
+				} else {
+					this.handlePickResponse(siteDomain, stageCd, indOnRes);
+				}
+				
 				break;
 			}
 			
@@ -352,13 +362,40 @@ public class MqMessageReceiver extends MqCommon {
 		JobInstance job = AnyEntityUtil.findEntityById(false, JobInstance.class, bizId);
 		
 		if(job != null) {
-			JobBatch batch = AnyEntityUtil.findEntityById(true, JobBatch.class, job.getBatchId()); 
-			IClassifyRunEvent exeEvent = new ClassifyRunEvent(batch, EventConstants.EVENT_STEP_ALONE, Indicator.class.getSimpleName(), bizFlag, job);
-			exeEvent.setReqQty(reqQty);
-			exeEvent.setResQty(resQty);
+			IClassifyRunEvent exeEvent = new ClassifyRunEvent(EventConstants.EVENT_STEP_ALONE, Indicator.class.getSimpleName(), bizFlag, job, reqQty, resQty);
 			this.eventPublisher.publishEvent(exeEvent);
 		} else {
 			throw new ElidomRuntimeException("bizId [" + bizId + "] of message is invalid");
+		}
+	}
+	
+	/**
+	 * 풀박스 요청 처리
+	 * 
+	 * @param siteDomain
+	 * @param stageCd
+	 * @param indOnRes
+	 */
+	private void handleFullboxResponse(Domain siteDomain, String stageCd, IndicatorOnResponse indOnRes) {
+		String bizFlag = indOnRes.getBizFlag();
+		String bizId = indOnRes.getBizId();		
+		Integer reqQty = indOnRes.getOrgEaQty();
+		Integer resQty = indOnRes.getResEaQty();
+		JobInstance job = AnyEntityUtil.findEntityById(false, JobInstance.class, bizId);
+		
+		if(job != null) {
+			IClassifyOutEvent outEvent = new ClassifyOutEvent(EventConstants.EVENT_STEP_ALONE, Indicator.class.getSimpleName(), bizFlag, job, reqQty, resQty);
+			this.eventPublisher.publishEvent(outEvent);
+			
+		} else {
+			WorkCell cell = AnyEntityUtil.findEntityBy(siteDomain.getId(), true, WorkCell.class, "domainId,indCd", siteDomain.getId(), bizId);
+			
+			if(cell != null) {
+				IClassifyOutEvent outEvent = new ClassifyOutEvent(EventConstants.EVENT_STEP_ALONE, Indicator.class.getSimpleName(), bizFlag, null);
+				outEvent.setWorkCell(cell);
+			} else {
+				throw new ElidomRuntimeException("bizId [" + bizId + "] of message is invalid");
+			}
 		}
 	}
 
