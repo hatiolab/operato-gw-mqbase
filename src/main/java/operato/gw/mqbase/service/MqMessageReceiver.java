@@ -13,7 +13,6 @@ import operato.gw.mqbase.service.impl.MqbaseIndHandlerService;
 import xyz.anythings.base.LogisCodeConstants;
 import xyz.anythings.base.entity.JobInstance;
 import xyz.anythings.base.entity.WorkCell;
-import xyz.anythings.base.event.EventConstants;
 import xyz.anythings.base.event.IClassifyOutEvent;
 import xyz.anythings.base.event.IClassifyRunEvent;
 import xyz.anythings.base.event.classfy.ClassifyOutEvent;
@@ -40,6 +39,7 @@ import xyz.anythings.gw.service.mq.model.MessageObject;
 import xyz.anythings.gw.service.mq.model.MiddlewareConnInfoModResponseAck;
 import xyz.anythings.gw.service.mq.model.TimesyncRequestAck;
 import xyz.anythings.gw.service.util.MwMessageUtil;
+import xyz.anythings.sys.event.model.SysEvent;
 import xyz.anythings.sys.util.AnyEntityUtil;
 import xyz.elidom.exception.server.ElidomRuntimeException;
 import xyz.elidom.rabbitmq.client.event.SystemMessageReceiveEvent;
@@ -362,7 +362,7 @@ public class MqMessageReceiver extends MqCommon {
 		JobInstance job = AnyEntityUtil.findEntityById(false, JobInstance.class, bizId);
 		
 		if(job != null) {
-			IClassifyRunEvent exeEvent = new ClassifyRunEvent(EventConstants.EVENT_STEP_ALONE, Indicator.class.getSimpleName(), bizFlag, job, reqQty, resQty);
+			IClassifyRunEvent exeEvent = new ClassifyRunEvent(SysEvent.EVENT_STEP_ALONE, Indicator.class.getSimpleName(), bizFlag, job, reqQty, resQty);
 			this.eventPublisher.publishEvent(exeEvent);
 		} else {
 			throw new ElidomRuntimeException("bizId [" + bizId + "] of message is invalid");
@@ -384,14 +384,14 @@ public class MqMessageReceiver extends MqCommon {
 		JobInstance job = AnyEntityUtil.findEntityById(false, JobInstance.class, bizId);
 		
 		if(job != null) {
-			IClassifyOutEvent outEvent = new ClassifyOutEvent(EventConstants.EVENT_STEP_ALONE, Indicator.class.getSimpleName(), bizFlag, job, reqQty, resQty);
+			IClassifyOutEvent outEvent = new ClassifyOutEvent(SysEvent.EVENT_STEP_ALONE, Indicator.class.getSimpleName(), bizFlag, job, reqQty, resQty);
 			this.eventPublisher.publishEvent(outEvent);
 			
 		} else {
 			WorkCell cell = AnyEntityUtil.findEntityBy(siteDomain.getId(), true, WorkCell.class, "domainId,indCd", siteDomain.getId(), bizId);
 			
 			if(cell != null) {
-				IClassifyOutEvent outEvent = new ClassifyOutEvent(EventConstants.EVENT_STEP_ALONE, Indicator.class.getSimpleName(), bizFlag, null);
+				IClassifyOutEvent outEvent = new ClassifyOutEvent(SysEvent.EVENT_STEP_ALONE, Indicator.class.getSimpleName(), bizFlag, null);
 				outEvent.setWorkCell(cell);
 			} else {
 				throw new ElidomRuntimeException("bizId [" + bizId + "] of message is invalid");
