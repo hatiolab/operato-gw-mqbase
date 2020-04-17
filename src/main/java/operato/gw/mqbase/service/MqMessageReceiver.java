@@ -17,6 +17,7 @@ import xyz.anythings.base.event.IClassifyOutEvent;
 import xyz.anythings.base.event.IClassifyRunEvent;
 import xyz.anythings.base.event.classfy.ClassifyOutEvent;
 import xyz.anythings.base.event.classfy.ClassifyRunEvent;
+import xyz.anythings.base.service.impl.LogisServiceDispatcher;
 import xyz.anythings.comm.rabbitmq.event.MwErrorEvent;
 import xyz.anythings.gw.GwConstants;
 import xyz.anythings.gw.entity.Gateway;
@@ -70,6 +71,11 @@ import xyz.elidom.sys.util.ValueUtil;
 @Component
 public class MqMessageReceiver extends MqCommon {
 	
+	/**
+	 * 물류 서비스 디스패처
+	 */
+	@Autowired
+	protected LogisServiceDispatcher serviceDispatcher;
 	/**
 	 * 미들웨어 전송 서비스
 	 */
@@ -359,7 +365,8 @@ public class MqMessageReceiver extends MqCommon {
 		String bizId = indOnRes.getBizId();		
 		Integer reqQty = indOnRes.getOrgEaQty();
 		Integer resQty = indOnRes.getResEaQty();
-		JobInstance job = AnyEntityUtil.findEntityById(false, JobInstance.class, bizId);
+		//JobInstance job = AnyEntityUtil.findEntityById(false, JobInstance.class, bizId);
+		JobInstance job = this.serviceDispatcher.getJobStatusService(indOnRes.getBizType()).findPickingJob(siteDomain.getId(), bizId);
 		
 		if(job != null) {
 			IClassifyRunEvent exeEvent = new ClassifyRunEvent(SysEvent.EVENT_STEP_ALONE, Indicator.class.getSimpleName(), bizFlag, job, reqQty, resQty);
@@ -381,7 +388,8 @@ public class MqMessageReceiver extends MqCommon {
 		String bizId = indOnRes.getBizId();		
 		Integer reqQty = indOnRes.getOrgEaQty();
 		Integer resQty = indOnRes.getResEaQty();
-		JobInstance job = AnyEntityUtil.findEntityById(false, JobInstance.class, bizId);
+		//JobInstance job = AnyEntityUtil.findEntityById(false, JobInstance.class, bizId);
+		JobInstance job = this.serviceDispatcher.getJobStatusService(indOnRes.getBizType()).findPickingJob(siteDomain.getId(), bizId);
 		
 		if(job != null) {
 			IClassifyOutEvent outEvent = new ClassifyOutEvent(SysEvent.EVENT_STEP_ALONE, Indicator.class.getSimpleName(), bizFlag, job, reqQty, resQty);
