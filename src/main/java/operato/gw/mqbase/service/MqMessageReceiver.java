@@ -269,7 +269,7 @@ public class MqMessageReceiver extends MqCommon {
 	 */
 	private void respondGatewayInit(Domain siteDomain, String stageCd, MessageObject msgObj) {
 		GatewayInitRequest gwInitReq = (GatewayInitRequest) msgObj.getBody();
-		Gateway gw = AnyEntityUtil.findEntityBy(siteDomain.getId(), true, Gateway.class, "domainId,stageCd,gwNm", siteDomain.getId(), stageCd, gwInitReq.getId());
+		Gateway gw = AnyEntityUtil.findEntityBy(siteDomain.getId(), true, Gateway.class, "*", "stageCd,gwNm", stageCd, gwInitReq.getId());
 		this.indHandlerService.handleGatewayBootReq(gw);
 	}
 	
