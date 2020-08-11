@@ -83,10 +83,10 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 		
 		return indList;
 	}
-		
+	
 	/**********************************************************************
 	 * 							1. 표시기 On 요청
-	 **********************************************************************/	
+	 **********************************************************************/
 	
 	/**
 	 * 여러 표시기에 한꺼번에 분류 처리를 위한 점등 요청
@@ -201,7 +201,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 		indOnInfo.setOrgEaQty(eaQty);
 		List<IndicatorOnInformation> indOnList = ValueUtil.toList(indOnInfo);
 		this.mqSender.send(domainId, stageCd, property, new IndicatorOnRequest(jobType, actionType, indOnList));
-	}	
+	}
 	
 	/**********************************************************************
 	 * 							2. 표시기 Off 요청
@@ -250,7 +250,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 			});
 		}
 	}
-		
+	
 	/**
 	 * 게이트웨이에 게이트웨이 소속 모든 표시기 소등 요청
 	 * 
@@ -303,10 +303,10 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 			this.requestIndListOff(domainId, stageCd, gwPath, gwIndList, forceOff);
 		}
 	}
-		
+	
 	/**********************************************************************
 	 * 							3. 표시기 숫자, 문자 표시 요청
-	 **********************************************************************/		
+	 **********************************************************************/
 	
 	/**
 	 * 작업 완료 표시기 표시 요청 
@@ -327,7 +327,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 		indOnInfo.setEndFullBox(!finalEnd);
 		IndicatorOnRequest indOnReq = new IndicatorOnRequest(jobType, GwConstants.IND_BIZ_FLAG_END, ValueUtil.toList(indOnInfo));
 		indOnReq.setReadOnly(finalEnd);
-		this.mqSender.send(domainId, stageCd, property, indOnReq);		
+		this.mqSender.send(domainId, stageCd, property, indOnReq);
 	}
 	
 	/**
@@ -583,7 +583,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	
 	/**********************************************************************
 	 * 							4. LED 바 점등 / 소등 
-	 **********************************************************************/	
+	 **********************************************************************/
 	
 	/**
 	 * 표시기 LED 점등 
@@ -653,7 +653,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 				ledOnReq.setId(indCd);
 				ledOnReq.setLedBarBrtns(ledBrightness);
 				MessageProperties property = MwMessageUtil.newReqMessageProp(stageCd, gwPath);
-				this.mqSender.send(domainId, stageCd, property, ledOnReq);			
+				this.mqSender.send(domainId, stageCd, property, ledOnReq);
 			}			
 		}
 	}
@@ -692,14 +692,14 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 				LedOffRequest ledOnReq = new LedOffRequest();
 				ledOnReq.setId(indCd);
 				MessageProperties property = MwMessageUtil.newReqMessageProp(stageCd, gwPath);
-				this.mqSender.send(domainId, stageCd, property, ledOnReq);			
+				this.mqSender.send(domainId, stageCd, property, ledOnReq);
 			}			
 		}
 	}
 
 	/**********************************************************************
 	 * 							4. 게이트웨이 / 표시기 펌웨어 배포  
-	 **********************************************************************/	
+	 **********************************************************************/
 	
 	@Override
 	public void deployFirmware(Deployment deployment) {
@@ -712,7 +712,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 		// 2. 게이트웨이 펌웨어 배포
 		if(ValueUtil.isEqualIgnoreCase(deployment.getTargetType(), Deployment.TARGET_TYPE_GW)) {
 			this.deployGwFirmware(domainId, gw.getStageCd(), gw.getGwNm(), deployment.getVersion(), deployment.computeDownloadUrl(), deployment.getFileName(), deployment.getForceFlag());
-		// 3. 게이트웨이 펌웨어 배포			
+		// 3. 게이트웨이 펌웨어 배포
 		} else {
 			this.deployIndFirmware(domainId, gw.getStageCd(), gw.getGwNm(), deployment.getVersion(), deployment.computeDownloadUrl(), deployment.getFileName(), deployment.getForceFlag());
 		}
