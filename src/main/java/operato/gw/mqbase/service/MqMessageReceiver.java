@@ -385,7 +385,7 @@ public class MqMessageReceiver extends MqCommon {
 	 */
 	private void handleFullboxResponse(Domain siteDomain, String stageCd, IndicatorOnResponse indOnRes) {
 		String bizFlag = indOnRes.getBizFlag();
-		String bizId = indOnRes.getBizId();		
+		String bizId = indOnRes.getBizId();
 		Integer reqQty = indOnRes.getOrgEaQty();
 		Integer resQty = indOnRes.getResEaQty();
 		//JobInstance job = AnyEntityUtil.findEntityById(false, JobInstance.class, bizId);
@@ -396,11 +396,13 @@ public class MqMessageReceiver extends MqCommon {
 			this.eventPublisher.publishEvent(outEvent);
 			
 		} else {
-			WorkCell cell = AnyEntityUtil.findEntityBy(siteDomain.getId(), true, WorkCell.class, "domainId,indCd", siteDomain.getId(), bizId);
+			String sql = "select * from work_cells where domain_id = :domainId and cell_cd = (select cell_cd from cells where domain_id = :domainId and ind_cd = :indCd)";
+			WorkCell cell = this.queryManager.selectBySql(sql, ValueUtil.newMap("domainId,indCd", siteDomain.getId(), indOnRes.getId()), WorkCell.class);
 			
 			if(cell != null) {
 				IClassifyOutEvent outEvent = new ClassifyOutEvent(SysEvent.EVENT_STEP_ALONE, Indicator.class.getSimpleName(), bizFlag, null);
 				outEvent.setWorkCell(cell);
+				this.eventPublisher.publishEvent(outEvent);
 			} else {
 				throw new ElidomRuntimeException("bizId [" + bizId + "] of message is invalid");
 			}
