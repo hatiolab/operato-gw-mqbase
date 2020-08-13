@@ -162,7 +162,7 @@ public class MqMessageReceiver extends MqCommon {
 	 * @param msgObj
 	 */
 	private void handleReplyMessage(Domain siteDomain, String stageCd, MessageObject msgObj) {
-		// this.logInfoMessage(siteDomain.getId(), msgObj);		
+		// this.logInfoMessage(siteDomain.getId(), msgObj);
 	}
 
 	/**
@@ -239,7 +239,7 @@ public class MqMessageReceiver extends MqCommon {
 				//this.handleMwConnectionModification(siteDomain, msgObj);
 				break;
 
-			// 10. 장비 (Kiosk, Tablet, PDA) 상태 보고 
+			// 10. 장비 (Kiosk, Tablet, PDA) 상태 보고
 			case Action.Values.EquipStatusReport :
 				//this.handleEquipStatusReport(siteDomain, msgObj);
 				break;
@@ -282,7 +282,7 @@ public class MqMessageReceiver extends MqCommon {
 	 */
 	private void handleGwInitReport(Domain siteDomain, String stageCd, MessageObject msgObj) {
 		GatewayInitReport gwInitRtp = (GatewayInitReport) msgObj.getBody();
-		Gateway gw = AnyEntityUtil.findEntityBy(siteDomain.getId(), true, Gateway.class, "domainId,stageCd,gwCd", siteDomain.getId(), stageCd, gwInitRtp.getId());
+		Gateway gw = AnyEntityUtil.findEntityBy(siteDomain.getId(), true, Gateway.class, null, "stageCd,gwCd", stageCd, gwInitRtp.getId());
 		this.indHandlerService.handleGatewayInitReport(gw, gwInitRtp.getVersion());
 	}
 

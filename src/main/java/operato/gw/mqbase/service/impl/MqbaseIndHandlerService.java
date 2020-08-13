@@ -90,7 +90,7 @@ public class MqbaseIndHandlerService extends AbstractExecutionService implements
 		// 3. Gateway 소속 표시기 List를 설정
 		gwInitRes.setIndList(gwIndInitList);
 		
-		// 4. Gateway가 관리하는 인디케이터 리스트 및 각각의 Indicator 별 설정 정보 조회 후 설정	
+		// 4. Gateway가 관리하는 인디케이터 리스트 및 각각의 Indicator 별 설정 정보 조회 후 설정
 		GatewayInitResIndConfig gwInitResIndConfig = (batchId != null) ?
 				BatchIndConfigUtil.getGatewayBootConfig(batchId, gateway) : StageIndConfigUtil.getGatewayBootConfig(gateway);
 		gwInitRes.setIndConf(gwInitResIndConfig);
