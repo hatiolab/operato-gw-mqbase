@@ -126,7 +126,7 @@ public class MqbaseIndHandlerService extends AbstractExecutionService implements
 	
 	@Override
 	public void handleTimesyncReq(Long domainId, String stageCd, String msgDestId) {
-		long serverTime = new Date().getTime();
+		long serverTime = (long)(new Date().getTime() / 1000);
 		this.mqSender.sendRequest(domainId, stageCd, msgDestId, new TimesyncResponse(serverTime));
 	}
 	
