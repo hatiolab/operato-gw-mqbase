@@ -22,6 +22,7 @@ import xyz.anythings.gw.service.model.IndCommonReq;
 import xyz.anythings.gw.service.mq.MqSender;
 import xyz.anythings.gw.service.mq.model.GatewayDepRequest;
 import xyz.anythings.gw.service.mq.model.GatewayInitResIndList;
+import xyz.anythings.gw.service.mq.model.IndicatorAlternation;
 import xyz.anythings.gw.service.mq.model.IndicatorDepRequest;
 import xyz.anythings.gw.service.mq.model.IndicatorOffRequest;
 import xyz.anythings.gw.service.mq.model.IndicatorOnInformation;
@@ -92,6 +93,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 여러 표시기에 한꺼번에 분류 처리를 위한 점등 요청
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param jobType
 	 * @param actionType
 	 * @param indOnList - key : gwPath, value : indOnInfo 
@@ -110,6 +112,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 여러 표시기 한꺼번에 재고 실사용 점등 요청
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param stockIndOnList - key : gwPath, value : indOnInfo
 	 */
 	@Override
@@ -126,6 +129,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 여러 표시기에 한꺼번에 분류 처리를 위한 점등 요청
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param jobType
 	 * @param indOnForInspectList - key : gwPath, value : indOnInfo 
 	 */
@@ -147,6 +151,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 하나의 표시기에 분류 처리를 위한 점등 요청
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param jobType
 	 * @param gwPath
 	 * @param indCd
@@ -164,6 +169,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 하나의 표시기에 검수를 위한 점등 요청
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param jobType
 	 * @param gwPath
 	 * @param indCd
@@ -181,6 +187,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 하나의 표시기에 액션 타입별 점등 요청 
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param jobType
 	 * @param gwPath
 	 * @param indCd
@@ -211,6 +218,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 표시기 하나에 대한 소등 요청 
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param gwPath
 	 * @param indCd
 	 * @param forceOff
@@ -227,6 +235,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 표시기 하나에 대한 소등 요청 
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param gwPath
 	 * @param indCd
 	 */
@@ -239,6 +248,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 게이트웨이 - 표시기 리스트 값으로 표시기 소등 요청
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param indOffMap gwPath -> indicator Code List
 	 * @param forceOff
 	 */
@@ -255,6 +265,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 게이트웨이에 게이트웨이 소속 모든 표시기 소등 요청
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param gwPath
 	 * @param indCdList
 	 * @param forceOff 강제 소등 여부
@@ -275,6 +286,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 호기별 표시기 Off 요청 전송 
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param indOffList 소등할 표시기 리스트 
 	 * @param forceOff 강제 소등 여부
 	 */
@@ -312,6 +324,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 작업 완료 표시기 표시 요청 
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param jobType
 	 * @param gwPath
 	 * @param indCd
@@ -334,6 +347,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 로케이션 별 공박스 매핑 필요 표시 요청
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param jobType
 	 * @param gwPath
 	 * @param indCd
@@ -347,6 +361,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * Fullbox시에 로케이션-공박스 매핑이 안 된 에러를 표시기에 표시하기 위한 요청
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param jobType
 	 * @param gwPath
 	 * @param indCd
@@ -360,6 +375,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 표시기에 버튼 점등은 되지 않고 eaQty 정보로 표시 - 사용자 터치 반응 안함 
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param jobType
 	 * @param gwPath
 	 * @param indCd
@@ -375,6 +391,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 세그먼트 정보를 커스터마이징 한 표시기 표시 - 이 때 Fullbox가 되어야 하므로 readOnly는 false로
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param jobType
 	 * @param gwPath
 	 * @param indCd
@@ -389,9 +406,10 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	}
 	
 	/**
-	 * 각종 옵션으로 표시기에 표시 요청 
+	 * 각종 옵션으로 표시기에 표시 요청
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param jobType
 	 * @param gwPath
 	 * @param indCd
@@ -418,9 +436,10 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	}
 	
 	/**
-	 * 각종 옵션으로 표시기에 표시 요청 
+	 * 각종 옵션으로 표시기에 표시 요청
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param jobType
 	 * @param gwPath
 	 * @param indCd
@@ -452,6 +471,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 총 처리한 수량 / 방금 처리한 수량을 표시
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param jobType
 	 * @param gwPath
 	 * @param indCd
@@ -478,6 +498,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * FullBox 표시기 표시 요청 
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param jobType
 	 * @param gwPath
 	 * @param indCd
@@ -493,6 +514,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 표시기에 문자열 표시 요청
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param jobType
 	 * @param gwPath
 	 * @param indCd
@@ -514,6 +536,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 표시기 표시 방향과 숫자를 동시에 표시 - 왼쪽은 'L' or 'R' 표시 오른쪽은 숫자 표시
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param jobType
 	 * @param gwPath
 	 * @param indCd
@@ -530,6 +553,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 왼쪽은 문자 오른쪽은 숫자 표시
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param jobType
 	 * @param gwPath
 	 * @param indCd
@@ -556,6 +580,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 표시기 표시 방향과 표시 수량을 좌, 우측에 동시에 표시 
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param jobType
 	 * @param indCd
 	 * @param bizId
@@ -589,6 +614,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 표시기 LED 점등 
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param gwPath
 	 * @param indCd
 	 * @param ledBarBrightness
@@ -606,6 +632,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 표시기 LED 소등 
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param gwPath
 	 * @param indCd
 	 */
@@ -621,6 +648,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 표시기 LED 리스트 점등 
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param indList
 	 * @param ledBrightness
 	 */
@@ -662,6 +690,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 표시기 LED 리스트 소등 
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param indList
 	 */
 	@Override
@@ -693,7 +722,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 				ledOnReq.setId(indCd);
 				MessageProperties property = MwMessageUtil.newReqMessageProp(stageCd, gwPath);
 				this.mqSender.send(domainId, stageCd, property, ledOnReq);
-			}			
+			}
 		}
 	}
 
@@ -722,6 +751,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 게이트웨이에 게이트웨이 펌웨어 배포 정보 전송 
 	 * 
 	 * @parma domainId
+	 * @param stageCd
 	 * @param gwChannel 게이트웨이 구분 채널 
 	 * @param gwVersion 게이트웨이 펌웨어 버전 
 	 * @param gwFwDownloadUrl 게이트웨이 펌웨어 다운로드 URL
@@ -742,6 +772,7 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 	 * 게이트웨이에 표시기 펌웨어 배포 정보 전송 
 	 * 
 	 * @param domainId
+	 * @param stageCd
 	 * @param gwChannel 게이트웨이 구분 채널
 	 * @param indVersion 표시기 펌웨어 버전 
 	 * @param indFwDownloadUrl 표시기 펌웨어 다운로드 URL
@@ -756,6 +787,14 @@ public class MqbaseIndRequestService extends AbstractQueryService implements IIn
 		indDeploy.setFilename(filename);
 		indDeploy.setForceFlag(forceFlag);
 		this.mqSender.sendRequest(domainId, stageCd, gwChannel, indDeploy);
+	}
+
+	@Override
+	public void changeIndicator(Long domainId, String stageCd, String gwPath, String fromIndCd, String toIndCd) {
+		IndicatorAlternation indAlt = new IndicatorAlternation();
+		indAlt.setFrom(fromIndCd);
+		indAlt.setTo(toIndCd);
+		this.mqSender.sendRequest(domainId, stageCd, gwPath, indAlt);
 	}
 
 }

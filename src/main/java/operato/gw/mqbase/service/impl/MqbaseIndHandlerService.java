@@ -246,10 +246,9 @@ public class MqbaseIndHandlerService extends AbstractExecutionService implements
 			
 					// 3. 각 게이트웨이에 접속 정보 변경 요청
 					this.mqSender.sendRequest(domainId, gw.getStageCd(), gw.getGwNm(), connModifyReq);
-				}				
+				}
 			}
 		}
-		
 	}
 
 	/**
