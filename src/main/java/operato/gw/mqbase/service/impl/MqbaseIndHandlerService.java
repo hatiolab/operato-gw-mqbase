@@ -47,7 +47,7 @@ public class MqbaseIndHandlerService extends AbstractExecutionService implements
 	 * 미들웨어로 메시지를 전송하기 위한 유틸리티
 	 */
 	@Autowired
-	private MqSender mqSender;	
+	protected MqSender mqSender;	
 
 	@Override
 	public boolean handleGatewayBootReq(Gateway gateway) {
