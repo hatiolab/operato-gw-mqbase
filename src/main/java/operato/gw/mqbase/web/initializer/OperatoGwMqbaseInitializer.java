@@ -44,15 +44,13 @@ public class OperatoGwMqbaseInitializer {
 	@EventListener({ ContextRefreshedEvent.class })
 	public void refresh(ContextRefreshedEvent event) {
 		this.logger.info("Operato MQBase module initializing ready...");
+		this.configSet.addConfig(this.module.getName(), this.module);
+		this.scanServices();
 	}
 
 	@EventListener({ ApplicationReadyEvent.class })
 	void ready(ApplicationReadyEvent event) {
 		this.logger.info("Operato MQBase module initializing started...");
-		
-		this.configSet.addConfig(this.module.getName(), this.module);
-		this.configSet.setApplicationModule(this.module.getName());
-		this.scanServices();
 		
 		this.logger.info("Operato MQBase initializing finished");
 	}
